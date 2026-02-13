@@ -540,12 +540,17 @@ def setAirconditionerAuto():
 
     return jsonify({"status": "success", "ac_auto": status})
 
+# Function to set the air conditioner
 @app.route("/set_airconditioner", methods=['POST'])
-@login_required
 def setAirconditioner():
-    """Send serial command to cooler controller"""
-    fanLevel = int(request.form['fanLevel'])
+    """Send RS485 command to water cooler controller via USB-RS485"""
+    try:
+        fanLevel = int(request.form['fanLevel'])
+    except (KeyError, ValueError) as e:
+        logging.error(f"Invalid fanLevel parameter: {e}")
+        return jsonify({"status": "error", "message": "Invalid fan level"}), 400
 
+    # Define the array of hexadecimal Modbus RTU commands
     hex_array = [
         b'\x01\x10\x00\x00\x00\x01\x02\x00\x00\xA6\x50',
         b'\x01\x10\x00\x00\x00\x01\x02\x02\xBF\xE6\x80',
@@ -569,33 +574,51 @@ def setAirconditioner():
         b'\x01\x10\x00\x00\x00\x01\x02\x11\x17\xEA\x0E'
     ]
 
+    # Select the command based on fan level
     if 0 <= fanLevel < len(hex_array):
         selected_row = hex_array[fanLevel]
+        logging.info(f"Water cooler fan level set to: {fanLevel}")
     else:
-        selected_row = b'\x00' * 11
+        logging.error(f"Fan level {fanLevel} out of range (0-{len(hex_array)-1})")
+        return jsonify({"status": "error", "message": f"Fan level must be 0-{len(hex_array)-1}"}), 400
 
-    ports = serial.tools.list_ports.comports()
-
-    if len(ports) == 0:
-        logger.warning("No serial ports found.")
-        return jsonify({"status": "error", "message": "No serial ports found"})
+    # Force USB-RS485 adapter port (CH340)
+    chosen_port = '/dev/ttyUSB0'
+    baud_rate = 9600
 
     try:
-        chosen_port = ports[0][0]
-        baud_rate = 9600
-
+        # Open serial port with context manager
         with serial.Serial(chosen_port, baud_rate, timeout=1) as ser:
-            logger.debug(f"Serial port {chosen_port} opened at {baud_rate} baud.")
-            for _ in range(5):
-                ser.write(selected_row)
-                time.sleep(0.2)
-            logger.debug("Fan level command sent via serial")
-
-        return jsonify({"status": "success", "fanLevel": fanLevel})
+            if ser.is_open:
+                logging.debug(f"Serial port {chosen_port} opened at {baud_rate} baud")
+                
+                # Send command 5 times with 200ms delay (for reliability)
+                for i in range(5):
+                    bytes_written = ser.write(selected_row)
+                    logging.debug(f"Command sent ({i+1}/5): {bytes_written} bytes")
+                    time.sleep(0.2)
+                
+                logging.info(f"Water cooler command sent successfully - Fan level: {fanLevel}")
+                return jsonify({
+                    "status": "success", 
+                    "fanLevel": fanLevel,
+                    "message": f"Water cooler fan set to level {fanLevel}"
+                })
+            else:
+                logging.error(f"Failed to open serial port {chosen_port}")
+                return jsonify({"status": "error", "message": "Failed to open serial port"}), 500
 
     except serial.SerialException as e:
-        logger.error(f"Serial port error: {e}")
-        return jsonify({"status": "error", "message": str(e)})
+        logging.error(f"Serial port error: {e}")
+        return jsonify({"status": "error", "message": f"Serial error: {str(e)}"}), 500
+    
+    except PermissionError as e:
+        logging.error(f"Permission denied on {chosen_port}. User not in dialout group?")
+        return jsonify({"status": "error", "message": "Permission denied. Check dialout group membership"}), 500
+    
+    except Exception as e:
+        logging.error(f"Unexpected error in setAirconditioner: {e}")
+        return jsonify({"status": "error", "message": f"Unexpected error: {str(e)}"}), 500
 
 # =======================
 # DOOR CONTROL ROUTES
