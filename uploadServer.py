@@ -110,7 +110,14 @@ def get_file_download_ips(filename):
 
 @app.route('/')
 def index():
-    file_list = os.listdir(PUBLIC_UPLOAD_DIR)
+    # FIXED: List only FILES from public folder (skip directories)
+    try:
+        all_items = os.listdir(PUBLIC_UPLOAD_DIR)
+        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f))]
+    except Exception as e:
+        print(f"Error listing files: {e}")
+        file_list = []
+    
     download_counts = get_download_counts()
     file_info = []
     for filename in file_list:
@@ -127,7 +134,14 @@ def index():
 @app.route('/files')
 def public_files():
     """Public page for downloading files only"""
-    file_list = os.listdir(PUBLIC_UPLOAD_DIR)
+    # FIXED: List only FILES from public folder (skip directories)
+    try:
+        all_items = os.listdir(PUBLIC_UPLOAD_DIR)
+        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f))]
+    except Exception as e:
+        print(f"Error listing files: {e}")
+        file_list = []
+    
     file_info = []
     for filename in file_list:
         file_info.append({
