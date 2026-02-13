@@ -9,7 +9,6 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-to-random-string-12345'
 app.permanent_session_lifetime = timedelta(hours=2)
 
-# Better session configuration
 app.config.update(
     SESSION_COOKIE_NAME='file_manager_session',
     SESSION_COOKIE_HTTPONLY=True,
@@ -18,9 +17,14 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
     SESSION_REFRESH_EACH_REQUEST=True
 )
-upload_dir = 'uploads'
+
+# FIXED: Use ONLY public folder
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads', 'public')
+os.makedirs(PUBLIC_UPLOAD_DIR, exist_ok=True)
+
 upload_folders = {
-    'Upload Folder': upload_dir,
+    'Upload Folder': PUBLIC_UPLOAD_DIR,
     'DLNA Music': '/media/HDD/Music',
     'DLNA Movie': '/media/HDD/Movies',
     'DLNA Pictures': '/media/HDD/Pictures'
@@ -32,8 +36,8 @@ users = {
     'user1': hashlib.sha256(b'password1').hexdigest(),
 }
 
-download_counter_file = 'download_counts.json'
-ip_log_file = 'downloadedIP.txt'
+download_counter_file = os.path.join(PUBLIC_UPLOAD_DIR, 'download_counts.json')
+ip_log_file = os.path.join(PUBLIC_UPLOAD_DIR, 'downloadedIP.txt')
 
 # Template filter for file icons
 @app.template_filter('get_file_icon')
@@ -74,7 +78,7 @@ def verify_credentials(username, password):
 
 def get_file_size(filename):
     try:
-        size = os.path.getsize(os.path.join(upload_dir, filename))
+        size = os.path.getsize(os.path.join(PUBLIC_UPLOAD_DIR, filename))
         for unit in ['B', 'KB', 'MB', 'GB']:
             if size < 1024.0:
                 return f"{size:.1f} {unit}"
@@ -106,7 +110,7 @@ def get_file_download_ips(filename):
 
 @app.route('/')
 def index():
-    file_list = os.listdir(upload_dir)
+    file_list = os.listdir(PUBLIC_UPLOAD_DIR)
     download_counts = get_download_counts()
     file_info = []
     for filename in file_list:
@@ -123,7 +127,7 @@ def index():
 @app.route('/files')
 def public_files():
     """Public page for downloading files only"""
-    file_list = os.listdir(upload_dir)
+    file_list = os.listdir(PUBLIC_UPLOAD_DIR)
     file_info = []
     for filename in file_list:
         file_info.append({
@@ -166,7 +170,7 @@ def upload_file():
     if file:
         filename = secure_filename(file.filename)
         destination = request.form.get('destination', 'Upload Folder')
-        upload_folder = upload_folders.get(destination, upload_dir)
+        upload_folder = upload_folders.get(destination, PUBLIC_UPLOAD_DIR)
         
         # Create directory if it doesn't exist
         os.makedirs(upload_folder, exist_ok=True)
@@ -199,7 +203,7 @@ def get_file(filename):
         download_counts[filename] = 1
     save_download_counts(download_counts)
     
-    return send_from_directory(upload_dir, filename)
+    return send_from_directory(PUBLIC_UPLOAD_DIR, filename)
 
 @app.route('/file-ips/<path:filename>', methods=['GET'])
 def file_ips(filename):
@@ -226,7 +230,7 @@ def delete_file(filename):
     if not session.get('authenticated', False):
         return "Unauthorized", 403
     
-    file_path = os.path.join(upload_dir, filename)
+    file_path = os.path.join(PUBLIC_UPLOAD_DIR, filename)
     if os.path.exists(file_path):
         os.remove(file_path)
         
@@ -241,6 +245,4 @@ def delete_file(filename):
         return "File not found", 404
 
 if __name__ == '__main__':
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
     app.run(debug=True, host='0.0.0.0', port=8000)
