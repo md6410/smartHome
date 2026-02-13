@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Manager - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .btn-public {
+            background: white !important;
+            color: #667eea !important;
+            border: 2px solid white;
+            padding: 12px 24px !important;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block !important;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-public:hover {
+            background: rgba(255, 255, 255, 0.9) !important;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .auth-section {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .auth-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .upload-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="file"],
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="file"]:focus,
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .auth-form input {
+            width: auto;
+            min-width: 150px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-delete {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+        
+        .btn-view-ips {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .btn-logout {
+            background: #6c757d;
+            padding: 8px 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .progress {
+            margin-top: 15px;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .file-list {
+            list-style: none;
+        }
+        
+        .file-item {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .file-name {
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+        
+        .file-name a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .file-name a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-meta {
+            color: #888;
+            font-size: 0.9em;
+        }
+        
+        .locked-message {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+        }
+        
+        .locked-message svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        
+        .modal-body {
+            padding: 30px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: white;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+        
+        .close:hover {
+            opacity: 0.8;
+        }
+        
+        .ip-list {
+            list-style: none;
+        }
+        
+        .ip-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+            transition: all 0.3s;
+        }
+        
+        .ip-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .ip-address {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        
+        .ip-details {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+            line-height: 1.6;
+        }
+        
+        .no-downloads {
+            text-align: center;
+            color: #888;
+            padding: 40px 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        @media (max-width: 600px) {
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .file-actions {
+                margin-top: 10px;
+                width: 100%;
+                flex-direction: column;
+            }
+            
+            .file-actions button {
+                width: 100%;
+                margin-left: 0 !important;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗂️ File Manager</h1>
+            <p>Admin Dashboard</p>
+            <div style="margin-top: 20px;">
+                <a href="/files" target="_blank" class="btn-public">
+                    👁️ View Public Download Page
+                </a>
+            </div>
+        </div>
+        
+        {% if not is_authenticated %}
+        <div class="auth-section">
+            <div class="auth-form">
+                <input type="text" id="loginUsername" placeholder="Username" autocomplete="username">
+                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+                <button onclick="login()">Login</button>
+            </div>
+        </div>
+        {% else %}
+        <div class="auth-section">
+            <div style="text-align: center;">
+                <span style="color: #28a745; font-weight: 600;">✓ Logged in as: <strong>{{ username }}</strong></span>
+                <button class="btn-logout" onclick="location.href='/logout'">Logout</button>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="content">
+            {% if is_authenticated %}
+            <div class="upload-section">
+                <h2>📤 Upload File</h2>
+                <form id="uploadForm">
+                    <div class="form-group">
+                        <label for="file">Select File:</label>
+                        <input type="file" name="file" id="file" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="destination">Destination:</label>
+                        <select name="destination" id="destination">
+                            <option value="Upload Folder">Upload Folder</option>
+                            <option value="DLNA Music">DLNA Music</option>
+                            <option value="DLNA Movie">DLNA Movie</option>
+                            <option value="DLNA Pictures">DLNA Pictures</option>
+                        </select>
+                    </div>
+                    <button type="button" onclick="uploadFile()">Upload File</button>
+                    <div class="progress" id="progressContainer">
+                        <div class="progress-bar" id="progressBar">0%</div>
+                    </div>
+                </form>
+            </div>
+            
+            <h2>📁 Uploaded Files</h2>
+            {% if file_list %}
+            <ul class="file-list">
+                {% for file in file_list %}
+                <li class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">
+                            <a href="/uploads/{{ file.name }}" target="_blank">📎 {{ file.name }}</a>
+                        </div>
+                        <div class="file-meta">
+                            Size: {{ file.size }} | Downloads: {{ file.downloads }}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn-view-ips" onclick="viewIPs('{{ file.name }}')">👁️ View IPs</button>
+                        <button class="btn-delete" onclick="deleteFile('{{ file.name }}')">🗑️ Delete</button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="no-downloads">
+                <p>No files uploaded yet</p>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="locked-message">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                </svg>
+                <h3>Please login to manage files</h3>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- IP Modal -->
+    <div id="ipModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>📊 Download History</h2>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <p class="loading">Loading</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function login() {
+            var username = document.getElementById('loginUsername').value;
+            var password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+            
+            var formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            
+            fetch('/login', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Incorrect username or password');
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                alert('Login failed: ' + error);
+            });
+        }
+        
+        function uploadFile() {
+            var fileInput = document.getElementById('file');
+            var destination = document.getElementById('destination').value;
+            var file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            var formData = new FormData();
+            formData.append('file', file);
+            formData.append('destination', destination);
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+            xhr.withCredentials = true;
+            
+            document.getElementById('progressContainer').style.display = 'block';
+            
+            xhr.upload.onprogress = function (e) {
+                if (e.lengthComputable) {
+                    var percentComplete = (e.loaded / e.total) * 100;
+                    document.getElementById('progressBar').style.width = percentComplete + '%';
+                    document.getElementById('progressBar').textContent = percentComplete.toFixed(1) + '%';
+                }
+            };
+            
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    alert('File uploaded successfully');
+                    location.reload();
+                } else if (xhr.status === 403) {
+                    alert('Session expired. Please login again.');
+                    location.reload();
+                } else {
+                    alert('File upload failed: ' + xhr.responseText);
+                    document.getElementById('progressContainer').style.display = 'none';
+                }
+            };
+            
+            xhr.onerror = function () {
+                alert('Upload error occurred. Please check your connection.');
+                document.getElementById('progressContainer').style.display = 'none';
+            };
+            
+            xhr.send(formData);
+        }
+        
+        function deleteFile(filename) {
+            if (!confirm('Are you sure you want to delete "' + filename + '"?')) {
+                return;
+            }
+            
+            var formData = new FormData();
+            
+            fetch('/delete/' + encodeURIComponent(filename), {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Delete error:', error);
+                alert('Delete failed: ' + error);
+            });
+        }
+        
+        function viewIPs(filename) {
+            document.getElementById('ipModal').style.display = 'block';
+            document.getElementById('modalBody').innerHTML = '<p class="loading">Loading</p>';
+            
+            fetch('/file-ips/' + encodeURIComponent(filename), {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok (Status: ' + response.status + ')');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    displayIPs(data);
+                } else {
+                    document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + (data.message || 'Failed to load data') + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ Error loading data: ' + error.message + '</div>';
+            });
+        }
+        
+        function displayIPs(data) {
+            var html = '<h3 style="margin-bottom: 15px; color: #333;">File: <strong>' + data.filename + '</strong></h3>';
+            html += '<p style="margin-bottom: 20px; color: #666; font-size: 1.1em;">📥 Total Downloads: <strong>' + data.total + '</strong></p>';
+            
+            if (data.downloads.length > 0) {
+                html += '<ul class="ip-list">';
+                data.downloads.forEach(function(download, index) {
+                    html += '<li class="ip-item">';
+                    html += '<div class="ip-address">🌐 ' + download.ip + '</div>';
+                    html += '<div class="ip-details">';
+                    html += '📅 <strong>Time:</strong> ' + download.timestamp + '<br>';
+                    html += '💻 <strong>Device:</strong> ' + download.user_agent;
+                    html += '</div>';
+                    html += '</li>';
+                });
+                html += '</ul>';
+            } else {
+                html += '<div class="no-downloads">';
+                html += '<p style="font-size: 1.2em;">📭 No downloads yet</p>';
+                html += '</div>';
+            }
+            
+            document.getElementById('modalBody').innerHTML = html;
+        }
+        
+        function closeModal() {
+            document.getElementById('ipModal').style.display = 'none';
+        }
+        
+        window.onclick = function(event) {
+            var modal = document.getElementById('ipModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            var usernameInput = document.getElementById('loginUsername');
+            var passwordInput = document.getElementById('loginPassword');
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        login();
+                    }
+                });
+            }
+            
+            if (usernameInput) {
+                usernameInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        login();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

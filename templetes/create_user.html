@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Users - Admin</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .header { 
+            background: #dc3545; 
+            color: white; 
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h2 {
+            margin: 0;
+            display: inline-block;
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button { 
+            padding: 12px 30px; 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button:hover { background: #218838; }
+        .error { 
+            color: white;
+            background: #dc3545;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .success { 
+            color: white;
+            background: #28a745;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .user-list {
+            margin-top: 20px;
+        }
+        .user-row {
+            padding: 15px;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn {
+            background: #dc3545;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .permission-btn {
+            background: #007bff;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-right: 10px;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .permission-btn:hover {
+            background: #0056b3;
+        }
+        h3 {
+            color: #333;
+            border-bottom: 2px solid #dc3545;
+            padding-bottom: 10px;
+        }
+        .user-count {
+            background: #007bff;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>👤 User Management (Admin)</h2>
+        <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+    </div>
+    
+    <div class="container">
+        {% if error %}
+        <div class="error">❌ {{ error }}</div>
+        {% endif %}
+        
+        {% if success %}
+        <div class="success">✅ {{ success }}</div>
+        {% endif %}
+        
+        <div class="form-section">
+            <h3>Create New User <span class="user-count">{{ user_count }}/50</span></h3>
+            <form method="POST">
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit">➕ Create User</button>
+            </form>
+        </div>
+        
+        <div class="user-list">
+            <h3>Registered Users</h3>
+            {% if users_list|length == 0 %}
+            <p style="color: #666; text-align: center; padding: 20px;">No users created yet.</p>
+            {% endif %}
+            {% for user in users_list %}
+            <div class="user-row">
+                <div>
+                    <strong>{{ user.username }}</strong>
+                    <div style="color: #666; font-size: 14px;">Created: {{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                <div>
+                    <a href="{{ url_for('manage_permissions', user_id=user.id) }}" class="permission-btn">⚙️ Permissions</a>
+                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" style="display: inline;">
+                        <button type="submit" class="delete-btn" onclick="return confirm('Delete user {{ user.username }}?')">🗑️ Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

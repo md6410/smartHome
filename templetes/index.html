@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parsa Home Smart Control</title>
+<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+<link rel="icon" href="{{ url_for('static', filename='images/HomeLogo.png') }}" type="image/png">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; color: #333; padding: 20px; min-height: 100vh; transition: background 1s ease; }
+body.morning { background: linear-gradient(135deg, #FFB75E 0%, #ED8F03 50%, #667eea 100%); }
+body.noon { background: linear-gradient(135deg, #56CCF2 0%, #2F80ED 50%, #667eea 100%); }
+body.afternoon { background: linear-gradient(135deg, #F2994A 0%, #F2C94C 50%, #764ba2 100%); }
+body.night { background: linear-gradient(135deg, #2C3E50 0%, #4A4969 50%, #1a1a2e 100%); }
+.container { max-width: 1200px; margin: 0 auto; }
+header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+.header-title-section { flex: 1; min-width: 200px; }
+h1 { color: #667eea; font-size: 2.5em; margin-bottom: 5px; }
+.subtitle { color: #999; font-size: 1em; }
+.status-badge { display: flex; align-items: center; gap: 8px; background: #f8f9fa; padding: 8px 15px; border-radius: 20px; font-size: 0.9em; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #28a745; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.logout-btn { background: #dc3545; color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.9em; transition: all 0.3s; }
+.logout-btn:hover { background: #c82333; transform: translateY(-2px); }
+.date-weather-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+.date-section, .weather-section { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.date-section h3, .weather-section h3 { font-size: 1em; color: #667eea; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.shamsi-date { font-size: 1.3em; font-weight: 700; color: #495057; margin-bottom: 8px; direction: rtl; text-align: right; }
+.gregorian-date { font-size: 1.1em; color: #6c757d; margin-bottom: 15px; }
+.current-time { font-size: 4em; font-weight: 900; color: transparent; text-align: center; margin-top: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); background-size: 200% 200%; -webkit-background-clip: text; background-clip: text; animation: gradientShift 3s ease infinite, pulse-glow 2s ease-in-out infinite; text-shadow: 0 0 20px rgba(102, 126, 234, 0.3); letter-spacing: 0.05em; font-family: 'Courier New', monospace; position: relative; padding: 10px 0; }
+@keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes pulse-glow { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.02); filter: brightness(1.1); } }
+.time-separator { display: inline-block; animation: blink 1s step-end infinite; }
+@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.time-digit { display: inline-block; min-width: 0.6em; text-align: center; transition: transform 0.3s ease; }
+.time-digit.flip { animation: flipDigit 0.6s ease; }
+@keyframes flipDigit { 0% { transform: rotateX(0deg); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0deg); } }
+.current-time::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 80%; height: 4px; background: linear-gradient(90deg, transparent, #667eea, transparent); border-radius: 2px; animation: slideGlow 2s ease-in-out infinite; }
+.current-time::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80%; height: 4px; background: linear-gradient(90deg, transparent, #764ba2, transparent); border-radius: 2px; animation: slideGlow 2s ease-in-out infinite reverse; }
+@keyframes slideGlow { 0%, 100% { width: 60%; opacity: 0.5; } 50% { width: 90%; opacity: 1; } }
+.weather-main { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+.weather-icon { font-size: 4em; animation: bounce 3s ease-in-out infinite; }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.weather-temp { text-align: right; }
+.temp-main { font-size: 2.5em; font-weight: 700; color: #495057; }
+.temp-range { font-size: 0.9em; color: #6c757d; }
+.weather-description { font-size: 1.1em; color: #495057; font-weight: 600; margin-bottom: 15px; }
+.weather-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.weather-detail-item { text-align: center; padding: 10px; background: white; border-radius: 8px; transition: transform 0.3s ease; }
+.weather-detail-item:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+.weather-detail-label { font-size: 0.8em; color: #6c757d; margin-bottom: 5px; }
+.weather-detail-value { font-size: 1.2em; font-weight: 700; color: #495057; }
+.section { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 20px; }
+.section-title { font-size: 1.8em; color: #667eea; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.section-title::before { content: "●"; color: #764ba2; }
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.mode-button { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; border: none; padding: 20px 15px; border-radius: 12px; cursor: pointer; font-size: 0.95em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4); text-align: center; position: relative; overflow: hidden; }
+.mode-button::after { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; }
+.mode-button:active::after { width: 300px; height: 300px; }
+.mode-button:hover { transform: translateY(-3px); box-shadow: 0 6px 25px rgba(108, 117, 125, 0.6); }
+.mode-button.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+.mode-button.active:hover { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6); }
+.mode-button.active::before { content: '✓'; position: absolute; top: 5px; right: 10px; font-size: 1.2em; }
+.light-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.light-item { background: #f8f9fa; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; border-left: 4px solid #dc3545; }
+.light-item.light-on { border-left-color: #28a745; background: #e8f5e9; }
+.light-item:hover { transform: translateX(5px); }
+.light-name { font-weight: 500; color: #495057; flex: 1; font-size: 0.9em; display: flex; align-items: center; gap: 8px; }
+.light-status-indicator { width: 8px; height: 8px; border-radius: 50%; background: #dc3545; display: inline-block; }
+.light-item.light-on .light-status-indicator { background: #28a745; box-shadow: 0 0 8px #28a745; }
+.light-controls { display: flex; gap: 8px; }
+.btn-on, .btn-off { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.2s ease; }
+.btn-on { background: #28a745; color: white; }
+.btn-on:hover { background: #218838; transform: scale(1.05); }
+.btn-on:disabled { background: #a8d5ba; cursor: not-allowed; }
+.btn-off { background: #dc3545; color: white; }
+.btn-off:hover { background: #c82333; transform: scale(1.05); }
+.btn-off:disabled { background: #f5a9b0; cursor: not-allowed; }
+.ac-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 15px; margin-bottom: 20px; }
+.status-display-panel { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e9ecef; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+.status-item { display: flex; flex-direction: column; gap: 5px; }
+.status-label { font-size: 0.85em; color: #6c757d; font-weight: 600; }
+.status-value { font-size: 1.1em; font-weight: 700; color: #495057; }
+.status-value.active { color: #28a745; }
+.status-badge-inline { display: inline-flex; align-items: center; gap: 8px; background: #f8f9fa; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; margin-left: auto; }
+.status-dot-inline { width: 12px; height: 12px; border-radius: 50%; background: #dc3545; }
+.status-dot-inline.status-on { background: #28a745; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); animation: pulse 2s infinite; }
+.status-dot-inline.status-off { background: #dc3545; }
+.status-text { font-weight: 600; color: #495057; }
+.status-badge-small { display: inline-flex; align-items: center; gap: 6px; background: #f8f9fa; padding: 5px 12px; border-radius: 15px; font-size: 0.8em; margin-left: 10px; }
+.status-dot-small { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot-small.status-on { background: #28a745; box-shadow: 0 0 8px rgba(40, 167, 69, 0.5); }
+.status-dot-small.status-off { background: #dc3545; }
+.ac-power-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.power-control { display: flex; justify-content: space-between; align-items: center; }
+.power-label { font-size: 1.3em; font-weight: 700; color: #495057; }
+.toggle-switch-large { position: relative; display: inline-block; width: 70px; height: 34px; }
+.toggle-switch-large input { opacity: 0; width: 0; height: 0; }
+.slider-large { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider-large:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider-large { background-color: #28a745; }
+input:checked + .slider-large:before { transform: translateX(36px); }
+.toggle-switch-medium { position: relative; display: inline-block; width: 50px; height: 24px; }
+.toggle-switch-medium input { opacity: 0; width: 0; height: 0; }
+.slider-medium { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+.slider-medium:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider-medium { background-color: #28a745; }
+input:checked + .slider-medium:before { transform: translateX(26px); }
+.control-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.control-label { font-size: 1.1em; font-weight: 600; color: #495057; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+.control-label-small { font-size: 0.95em; font-weight: 600; color: #6c757d; margin-bottom: 10px; display: block; }
+.label-icon { font-size: 1.3em; }
+.value-display { margin-left: auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 700; min-width: 50px; text-align: center; }
+.temp-display { font-size: 1.2em; min-width: 70px; }
+.slider-container { margin-top: 10px; }
+.custom-slider { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px; background: #e9ecef; outline: none; transition: background 0.3s; }
+.custom-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5); transition: all 0.3s; }
+.custom-slider::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.7); }
+.custom-slider::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; border: none; box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5); transition: all 0.3s; }
+.custom-slider::-moz-range-thumb:hover { transform: scale(1.2); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.7); }
+.temp-slider::-webkit-slider-thumb { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+.temp-slider::-moz-range-thumb { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+.slider-labels, .temp-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.85em; color: #6c757d; }
+.toggle-controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.toggle-control-item { background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.toggle-label { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.toggle-icon { font-size: 1.5em; }
+.toggle-text { flex: 1; font-weight: 600; color: #495057; }
+.time-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; }
+.time-btn, .time-btn-small { padding: 12px 10px; border: 2px solid #e9ecef; background: white; border-radius: 10px; cursor: pointer; font-weight: 600; color: #495057; transition: all 0.3s ease; font-size: 0.95em; }
+.time-btn-small { padding: 10px 8px; font-size: 0.85em; }
+.time-btn:hover, .time-btn-small:hover { border-color: #667eea; background: #f8f9ff; transform: translateY(-2px); }
+.time-btn.active, .time-btn-small.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: #667eea; }
+.repeat-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.repeat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.repeat-options { padding-top: 15px; border-top: 2px solid #f8f9fa; animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.btn-apply { width: 100%; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 30px; border-radius: 12px; cursor: pointer; font-size: 1.2em; font-weight: 700; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-apply:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(40, 167, 69, 0.6); }
+.btn-apply:active { transform: translateY(0); }
+.btn-icon { font-size: 1.3em; }
+.individual-control-section { margin-top: 20px; }
+.subsection-title { font-size: 1.2em; font-weight: 600; color: #495057; margin-bottom: 15px; display: flex; align-items: center; }
+.quick-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.quick-control-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 20px; border-radius: 12px; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px; }
+.quick-control-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5); }
+.quick-control-btn.off-btn { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3); }
+.quick-control-btn.off-btn:hover { box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5); }
+.control-icon { font-size: 1.3em; }
+.control-text { font-weight: 600; }
+.door-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.door-button { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white; border: none; padding: 20px; border-radius: 12px; cursor: pointer; font-size: 1.1em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4); }
+.door-button:hover { transform: translateY(-3px); box-shadow: 0 6px 25px rgba(23, 162, 184, 0.6); }
+.upload-server-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 15px; }
+.upload-server-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.info-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; gap: 15px; align-items: flex-start; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.info-card:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+.info-icon { font-size: 2.5em; min-width: 50px; }
+.info-content { flex: 1; }
+.info-title { font-size: 1.1em; font-weight: 700; color: #495057; margin-bottom: 5px; }
+.info-description { font-size: 0.9em; color: #6c757d; margin-bottom: 10px; }
+.info-link { display: inline-block; color: #667eea; text-decoration: none; font-weight: 600; font-size: 0.9em; transition: color 0.3s; }
+.info-link:hover { color: #764ba2; }
+.quick-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.action-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 20px; border-radius: 12px; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px; }
+.action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
+.action-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+#notification { position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 9999; display: none; font-weight: 600; }
+@media (max-width: 768px) {
+    h1 { font-size: 2em; }
+    .header-top { flex-direction: column; text-align: center; }
+    .mode-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    .light-item { flex-direction: column; gap: 10px; text-align: center; }
+    .time-selector { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
+    .toggle-controls-grid { grid-template-columns: 1fr; }
+    .weather-details { grid-template-columns: repeat(3, 1fr); }
+    .current-time { font-size: 3em; }
+    .weather-icon { font-size: 3em; }
+    .upload-server-info { grid-template-columns: 1fr; }
+}
+</style>
+
+<script type="text/javascript">
+$(document).ready(function() {
+    var userInteractingAC = false;
+    var userInteractingSplit = false;
+    
+    loadStatus();
+    loadDateWeather();
+    setInterval(loadStatus, 3000);
+    setInterval(loadDateWeather, 60000);
+    setInterval(updateClock, 1000);
+
+    function loadDateWeather() {
+        $.get("/get_date_weather", function(data) {
+            updateDateWeather(data);
+        });
+    }
+    
+    function updateDateWeather(data) {
+        $('#shamsi_date').text(data.shamsi);
+        $('#gregorian_date').text(data.gregorian);
+        updateTimeDisplay(data.time);
+        $('body').removeClass('morning noon afternoon night').addClass(data.timeOfDay);
+        
+        $('#weather_icon').text(data.weather.icon);
+        $('#weather_temp').text(data.weather.temperature + '°C');
+        $('#weather_feels').text(data.weather.feels_like + '°C');
+        $('#weather_range').text(data.weather.temp_min + '° / ' + data.weather.temp_max + '°');
+        $('#weather_desc').text(data.weather.description);
+        $('#weather_humidity').text(data.weather.humidity + '%');
+        $('#weather_wind').text(data.weather.wind_speed + ' km/h');
+    }
+    
+    function updateTimeDisplay(newTime) {
+        var currentTimeEl = $('#current_time');
+        var oldTime = currentTimeEl.attr('data-time') || '00:00';
+        
+        if (oldTime !== newTime) {
+            var timeHTML = '';
+            for (var i = 0; i < newTime.length; i++) {
+                if (newTime[i] === ':') {
+                    timeHTML += '<span class="time-separator">:</span>';
+                } else {
+                    var shouldFlip = oldTime[i] !== newTime[i];
+                    timeHTML += '<span class="time-digit' + (shouldFlip ? ' flip' : '') + '">' + newTime[i] + '</span>';
+                }
+            }
+            currentTimeEl.html(timeHTML);
+            currentTimeEl.attr('data-time', newTime);
+            
+            setTimeout(function() {
+                $('.time-digit').removeClass('flip');
+            }, 600);
+        }
+    }
+    
+    function updateClock() {
+        var now = new Date();
+        var hours = String(now.getHours()).padStart(2, '0');
+        var minutes = String(now.getMinutes()).padStart(2, '0');
+        var newTime = hours + ':' + minutes;
+        updateTimeDisplay(newTime);
+    }
+
+    function loadStatus() {
+        $.get("/get_status", function(data) {
+            updateUI(data);
+        });
+    }
+
+    function updateUI(data) {
+        $('.mode-button').removeClass('active');
+        if (data.currentMode) {
+            $('.mode-button[data-mode="' + data.currentMode + '"]').addClass('active');
+        }
+
+        $.each(data.lights, function(pin, isOn) {
+            var lightItem = $('.light-item[data-pin="' + pin + '"]');
+            if (isOn) {
+                lightItem.addClass('light-on');
+                lightItem.find('.btn-on').prop('disabled', true);
+                lightItem.find('.btn-off').prop('disabled', false);
+            } else {
+                lightItem.removeClass('light-on');
+                lightItem.find('.btn-on').prop('disabled', false);
+                lightItem.find('.btn-off').prop('disabled', true);
+            }
+        });
+
+        if (data.acAutoState && !userInteractingAC) {
+            var acAutoRunning = data.acAutoState.running;
+            
+            if (acAutoRunning) {
+                $('#ac_auto_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
+                $('#ac_auto_status_badge .status-text').text('RUNNING');
+            } else {
+                $('#ac_auto_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
+                $('#ac_auto_status_badge .status-text').text('OFF');
+            }
+            
+            $('#ac_auto_system_status').text(acAutoRunning ? 'RUNNING' : 'OFF')
+                .toggleClass('active', acAutoRunning);
+            $('#ac_auto_fan_status').text(acAutoRunning ? data.acAutoState.fanLevel : '-')
+                .toggleClass('active', acAutoRunning);
+            $('#ac_auto_pump_status').text(data.acAutoState.waterPump ? 'ON' : 'OFF')
+                .toggleClass('active', data.acAutoState.waterPump);
+            $('#ac_auto_fanbetween_status').text(data.acAutoState.fanBetween ? 'ON' : 'OFF')
+                .toggleClass('active', data.acAutoState.fanBetween);
+            
+            $('#ac_auto_power').prop('checked', acAutoRunning);
+        }
+
+        if (data.acSplitState && !userInteractingSplit) {
+            var acSplitRunning = data.acSplitState.running;
+            
+            if (acSplitRunning) {
+                $('#ac_split_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
+                $('#ac_split_status_badge .status-text').text('RUNNING');
+            } else {
+                $('#ac_split_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
+                $('#ac_split_status_badge .status-text').text('OFF');
+            }
+            
+            $('#ac_split_system_status').text(acSplitRunning ? 'RUNNING' : 'OFF')
+                .toggleClass('active', acSplitRunning);
+            $('#ac_split_temp_status').text(acSplitRunning ? data.acSplitState.temperature + '°C' : '-')
+                .toggleClass('active', acSplitRunning);
+            
+            $('#ac_split_power').prop('checked', acSplitRunning);
+        }
+
+        if (data.fanBetweenChannels !== undefined) {
+            var fanOn = data.fanBetweenChannels;
+            
+            if (fanOn) {
+                $('#fan_btw_status_badge .status-dot-small').removeClass('status-off').addClass('status-on');
+                $('#fan_btw_status_text').text('ON');
+            } else {
+                $('#fan_btw_status_badge .status-dot-small').removeClass('status-on').addClass('status-off');
+                $('#fan_btw_status_text').text('OFF');
+            }
+        }
+    }
+
+    $('#ac_auto_power, #fan_level_slider, #water_pump_toggle, #fan_btw_toggle').on('focus mousedown touchstart', function() {
+        userInteractingAC = true;
+    });
+    
+    $('.ac-card').first().on('click', function() {
+        userInteractingAC = true;
+        setTimeout(function() {
+            userInteractingAC = false;
+        }, 10000);
+    });
+
+    $('#fan_level_slider').on('input', function() {
+        $('#fan_level_display').text($(this).val());
+        userInteractingAC = true;
+    });
+
+    $('.time-btn[data-minutes]').click(function() {
+        $('.time-btn[data-minutes]').removeClass('active');
+        $(this).addClass('active');
+        $('#duration_value').val($(this).data('minutes'));
+        userInteractingAC = true;
+    });
+
+    $('#repeat_enabled').change(function() {
+        if ($(this).is(':checked')) {
+            $('#repeat_options').slideDown(300);
+        } else {
+            $('#repeat_options').slideUp(300);
+        }
+        userInteractingAC = true;
+    });
+
+    $('.time-btn-small[data-interval]').click(function() {
+        $('.time-btn-small[data-interval]').removeClass('active');
+        $(this).addClass('active');
+        $('#repeat_interval_value').val($(this).data('interval'));
+        userInteractingAC = true;
+    });
+
+    $('#apply_ac_auto').click(function() {
+        var status = $('#ac_auto_power').is(':checked') ? 'on' : 'off';
+        var fanLevel = $('#fan_level_slider').val();
+        var waterPump = $('#water_pump_toggle').is(':checked') ? 'on' : 'off';
+        var fanBtw = $('#fan_btw_toggle').is(':checked') ? 'on' : 'off';
+        var length = $('#duration_value').val();
+        var repeat = $('#repeat_enabled').is(':checked') ? 'on' : 'off';
+        var everyTimeMinute = $('#repeat_interval_value').val();
+
+        $('#apply_ac_auto').prop('disabled', true).html('<span class="btn-icon">⏳</span> Applying...');
+
+        $.post("/set_airconditionerAuto", {
+            status: status,
+            fanLevel: fanLevel,
+            waterPumpStatus: waterPump,
+            tempSet: 0,
+            length: length,
+            everyTimeMinute: everyTimeMinute,
+            repeat: repeat,
+            fanBtwChannelStatus: fanBtw
+        }, function(data) {
+            showNotification('✓ Water Cooler settings applied!');
+            $('#apply_ac_auto').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply Cooler Settings');
+            userInteractingAC = false;
+            loadStatus();
+        }).fail(function() {
+            showNotification('❌ Error applying settings');
+            $('#apply_ac_auto').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply Cooler Settings');
+            userInteractingAC = false;
+        });
+    });
+
+    $('#fan_btw_on').click(function() {
+        $.post("/on", {pin: 4}, function(data) {
+            showNotification('Fan Between Channels turned ON');
+            loadStatus();
+        });
+    });
+
+    $('#fan_btw_off').click(function() {
+        $.post("/off", {pin: 4}, function(data) {
+            showNotification('Fan Between Channels turned OFF');
+            loadStatus();
+        });
+    });
+
+    $('#ac_split_power, #temp_slider').on('focus mousedown touchstart', function() {
+        userInteractingSplit = true;
+    });
+    
+    $('.ac-card').last().on('click', function() {
+        userInteractingSplit = true;
+        setTimeout(function() {
+            userInteractingSplit = false;
+        }, 10000);
+    });
+    
+    $('#temp_slider').on('input', function() {
+        $('#temp_display').text($(this).val() + '°C');
+        userInteractingSplit = true;
+    });
+
+    $('.time-btn[data-minutes-split]').click(function() {
+        $('.time-btn[data-minutes-split]').removeClass('active');
+        $(this).addClass('active');
+        $('#duration_split_value').val($(this).data('minutes-split'));
+        userInteractingSplit = true;
+    });
+
+    $('#repeat_split_enabled').change(function() {
+        if ($(this).is(':checked')) {
+            $('#repeat_split_options').slideDown(300);
+        } else {
+            $('#repeat_split_options').slideUp(300);
+        }
+        userInteractingSplit = true;
+    });
+
+    $('.time-btn-small[data-interval-split]').click(function() {
+        $('.time-btn-small[data-interval-split]').removeClass('active');
+        $(this).addClass('active');
+        $('#repeat_split_interval_value').val($(this).data('interval-split'));
+        userInteractingSplit = true;
+    });
+
+    $('#apply_ac_split').click(function() {
+        var status = $('#ac_split_power').is(':checked') ? 'on' : 'off';
+        var tempSet = $('#temp_slider').val();
+        var length = $('#duration_split_value').val();
+        var repeat = $('#repeat_split_enabled').is(':checked') ? 'on' : 'off';
+        var everyTimeMinute = $('#repeat_split_interval_value').val();
+
+        $('#apply_ac_split').prop('disabled', true).html('<span class="btn-icon">⏳</span> Applying...');
+
+        $.post("/set_airconditionerSplit", {
+            status: status,
+            tempSet: tempSet,
+            length: length,
+            everyTimeMinute: everyTimeMinute,
+            repeat: repeat
+        }, function(data) {
+            showNotification('✓ Split AC settings applied!');
+            $('#apply_ac_split').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply AC Settings');
+            userInteractingSplit = false;
+            loadStatus();
+        }).fail(function() {
+            showNotification('❌ Error applying settings');
+            $('#apply_ac_split').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply AC Settings');
+            userInteractingSplit = false;
+        });
+    });
+
+    $(".btn-on").click(function() {
+        var pin = $(this).data("pin");
+        $.post("/on", {pin: pin}, function(data) {
+            showNotification('Light turned ON');
+            loadStatus();
+        });
+    });
+
+    $(".btn-off").click(function() {
+        var pin = $(this).data("pin");
+        $.post("/off", {pin: pin}, function(data) {
+            showNotification('Light turned OFF');
+            loadStatus();
+        });
+    });
+
+    $(".mode-button").click(function() {
+        var mode = $(this).data("mode");
+        var isActive = $(this).hasClass("active");
+        var status = isActive ? "off" : "on";
+        
+        $.post("/set_mode", {modeType: mode, status: status}, function(data) {
+            showNotification(mode.replace(/_/g, ' ') + ' ' + status.toUpperCase());
+            loadStatus();
+        });
+    });
+
+    $("#toggle_parking_door_btn").click(function() {
+        $.post("/ParkingDoorToggle", function(data) {
+            showNotification('Parking door toggled');
+        });
+    });
+
+    $("#toggle_main_door_btn").click(function() {
+        $.post("/MainDoorToggle", function(data) {
+            showNotification('Main door toggled');
+        });
+    });
+
+    // Upload Server Control
+    function loadUploadServerStatus() {
+        $.get("/get_upload_server_status", function(data) {
+            updateUploadServerUI(data);
+        }).fail(function() {
+            console.log("Failed to get upload server status");
+        });
+    }
+    
+    function updateUploadServerUI(data) {
+        var isRunning = data.running;
+        
+        if (isRunning) {
+            $('#upload_server_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
+            $('#upload_server_status_badge .status-text').text('RUNNING');
+        } else {
+            $('#upload_server_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
+            $('#upload_server_status_badge .status-text').text('OFF');
+        }
+        
+        $('#upload_server_status').text(isRunning ? 'RUNNING' : 'OFF')
+            .toggleClass('active', isRunning);
+        $('#upload_server_port').text(isRunning ? '8000' : '-')
+            .toggleClass('active', isRunning);
+        
+        $('#upload_server_toggle').prop('checked', isRunning);
+        
+        $('#open_upload_btn').prop('disabled', !isRunning);
+        $('#upload_admin_link').toggleClass('disabled', !isRunning);
+        $('#upload_public_link').toggleClass('disabled', !isRunning);
+    }
+    
+    $('#upload_server_toggle').change(function() {
+        var isChecked = $(this).is(':checked');
+        var action = isChecked ? 'on' : 'off';
+        
+        $('#upload_server_toggle').prop('disabled', true);
+        
+        $.post("/toggle_upload_server", {action: action}, function(data) {
+            if (data.success) {
+                showNotification(data.message);
+                updateUploadServerUI(data);
+            } else {
+                showNotification('❌ ' + data.message);
+                $('#upload_server_toggle').prop('checked', !isChecked);
+            }
+        }).fail(function() {
+            showNotification('❌ Error toggling upload server');
+            $('#upload_server_toggle').prop('checked', !isChecked);
+        }).always(function() {
+            $('#upload_server_toggle').prop('disabled', false);
+        });
+    });
+    
+    loadUploadServerStatus();
+    setInterval(loadUploadServerStatus, 10000);
+
+    function showNotification(message) {
+        if ($('#notification').length === 0) {
+            $('body').append('<div id="notification"></div>');
+        }
+        
+        $('#notification').text(message).fadeIn(300).delay(2000).fadeOut(300);
+    }
+});
+</script>
+</head>
+
+<body class="morning">
+<div class="container">
+    <header>
+        <div class="header-top">
+            <div class="header-title-section">
+                <h1>🏠 Parsa Home</h1>
+                <p class="subtitle">Smart Control System</p>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>Connected</span>
+            </div>
+            <a href="/logout" class="logout-btn">🚪 Logout</a>
+        </div>
+        
+        <div class="date-weather-container">
+            <div class="date-section">
+                <h3>📅 Date & Time</h3>
+                <div class="shamsi-date" id="shamsi_date">چهارشنبه، 22 بهمن 1404</div>
+                <div class="gregorian-date" id="gregorian_date">Wednesday, February 11, 2026</div>
+                <div class="current-time" id="current_time" data-time="14:29">14:29</div>
+            </div>
+            
+            <div class="weather-section">
+                <h3>🌤️ Weather</h3>
+                <div class="weather-main">
+                    <div class="weather-icon" id="weather_icon">☀️</div>
+                    <div class="weather-temp">
+                        <div class="temp-main" id="weather_temp">18°C</div>
+                        <div class="temp-range" id="weather_range">12° / 22°</div>
+                    </div>
+                </div>
+                <div class="weather-description" id="weather_desc">Clear Sky</div>
+                <div class="weather-details">
+                    <div class="weather-detail-item">
+                        <div class="weather-detail-label">Feels Like</div>
+                        <div class="weather-detail-value" id="weather_feels">16°C</div>
+                    </div>
+                    <div class="weather-detail-item">
+                        <div class="weather-detail-label">Humidity</div>
+                        <div class="weather-detail-value" id="weather_humidity">45%</div>
+                    </div>
+                    <div class="weather-detail-item">
+                        <div class="weather-detail-label">Wind</div>
+                        <div class="weather-detail-value" id="weather_wind">12 km/h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Lighting Modes -->
+    <div class="section">
+        <div class="section-title">Lighting Modes</div>
+        <div class="mode-grid">
+            <button class="mode-button" data-mode="TV_MODE">📺 TV Mode</button>
+            <button class="mode-button" data-mode="BREAKFAST_MODE">🌅 Breakfast</button>
+            <button class="mode-button" data-mode="LUNCH_MODE">🍽️ Lunch</button>
+            <button class="mode-button" data-mode="DINNER_MODE">🌆 Dinner</button>
+            <button class="mode-button" data-mode="RELAX_MODE">😌 Relax</button>
+            <button class="mode-button" data-mode="NORMAL_NIGHT_MODE">🌙 Night</button>
+            <button class="mode-button" data-mode="NORMAL_DAY">☀️ Day</button>
+            <button class="mode-button" data-mode="MEETING_MODE">👔 Meeting</button>
+            <button class="mode-button" data-mode="PARTY_MODE">🎉 Party</button>
+            <button class="mode-button" data-mode="COOKING_MODE">👨🍳 Cooking</button>
+            <button class="mode-button" data-mode="AUTO_LIGHT_MODE">🤖 Auto</button>
+        </div>
+    </div>
+
+    <!-- Individual Lights -->
+    <div class="section">
+        <div class="section-title">Individual Light Controls</div>
+        <div class="light-grid">
+            <div class="light-item" data-pin="0">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Hidden Light</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="0">ON</button>
+                    <button class="btn-off" data-pin="0">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="8">
+                <span class="light-name"><span class="light-status-indicator"></span> 🏮 Living Room Chandelier</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="8">ON</button>
+                    <button class="btn-off" data-pin="8">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="17">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Living Room Halogen</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="17">ON</button>
+                    <button class="btn-off" data-pin="17">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="24">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Kitchen Pendant</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="24">ON</button>
+                    <button class="btn-off" data-pin="24">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="25">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Hallway Linear</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="25">ON</button>
+                    <button class="btn-off" data-pin="25">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="5">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Island Top</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="5">ON</button>
+                    <button class="btn-off" data-pin="5">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="20">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Kitchen Ceiling</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="20">ON</button>
+                    <button class="btn-off" data-pin="20">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="22">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Living Room Square</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="22">ON</button>
+                    <button class="btn-off" data-pin="22">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="16">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Entryway</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="16">ON</button>
+                    <button class="btn-off" data-pin="16">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="10">
+                <span class="light-name"><span class="light-status-indicator"></span> 🏮 Dinner Chandelier</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="10">ON</button>
+                    <button class="btn-off" data-pin="10">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="7">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Dinner Wall Linear</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="7">ON</button>
+                    <button class="btn-off" data-pin="7">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="19">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Light Receiver 1</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="19">ON</button>
+                    <button class="btn-off" data-pin="19">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="1">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Dance Light</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="1">ON</button>
+                    <button class="btn-off" data-pin="1">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="12">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Light Receiver 2</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="12">ON</button>
+                    <button class="btn-off" data-pin="12">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="13">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Behind Stove</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="13">ON</button>
+                    <button class="btn-off" data-pin="13">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="27">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Living Wall Linear</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="27">ON</button>
+                    <button class="btn-off" data-pin="27">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="3">
+                <span class="light-name"><span class="light-status-indicator"></span> 💡 Bar Hidden</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="3">ON</button>
+                    <button class="btn-off" data-pin="3">OFF</button>
+                </div>
+            </div>
+            <div class="light-item" data-pin="6">
+                <span class="light-name"><span class="light-status-indicator"></span> 📺 TV Hidden</span>
+                <div class="light-controls">
+                    <button class="btn-on" data-pin="6">ON</button>
+                    <button class="btn-off" data-pin="6">OFF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- AC Auto Water Cooler -->
+    <div class="section">
+        <div class="section-title">
+            ❄️ Water Cooler (Auto)
+            <span class="status-badge-inline" id="ac_auto_status_badge">
+                <span class="status-dot-inline status-off"></span>
+                <span class="status-text">OFF</span>
+            </span>
+        </div>
+        
+        <div class="ac-card">
+            <div class="status-display-panel">
+                <div class="status-item">
+                    <span class="status-label">System Status:</span>
+                    <span class="status-value" id="ac_auto_system_status">OFF</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Fan Level:</span>
+                    <span class="status-value" id="ac_auto_fan_status">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Water Pump:</span>
+                    <span class="status-value" id="ac_auto_pump_status">OFF</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Fan Between:</span>
+                    <span class="status-value" id="ac_auto_fanbetween_status">OFF</span>
+                </div>
+            </div>
+
+            <div class="ac-power-section">
+                <div class="power-control">
+                    <span class="power-label">Power</span>
+                    <label class="toggle-switch-large">
+                        <input type="checkbox" id="ac_auto_power">
+                        <span class="slider-large"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-label">
+                    <span class="label-icon">💨</span>
+                    <span>Fan Speed</span>
+                    <span class="value-display" id="fan_level_display">3</span>
+                </div>
+                <input type="range" id="fan_level_slider" class="custom-slider" min="0" max="19" value="3">
+                <div class="slider-labels">
+                    <span>OFF</span>
+                    <span>Level 10</span>
+                    <span>MAX</span>
+                </div>
+            </div>
+
+            <div class="toggle-controls-grid">
+                <div class="toggle-control-item">
+                    <label class="toggle-label">
+                        <span class="toggle-icon">💧</span>
+                        <span class="toggle-text">Water Pump</span>
+                        <label class="toggle-switch-medium">
+                            <input type="checkbox" id="water_pump_toggle">
+                            <span class="slider-medium"></span>
+                        </label>
+                    </label>
+                </div>
+                
+                <div class="toggle-control-item">
+                    <label class="toggle-label">
+                        <span class="toggle-icon">🌀</span>
+                        <span class="toggle-text">Fan Between Channels
+                            <span class="status-badge-small" id="fan_btw_status_badge">
+                                <span class="status-dot-small status-off"></span>
+                                <span id="fan_btw_status_text">OFF</span>
+                            </span>
+                        </span>
+                        <label class="toggle-switch-medium">
+                            <input type="checkbox" id="fan_btw_toggle">
+                            <span class="slider-medium"></span>
+                        </label>
+                    </label>
+                </div>
+            </div>
+
+            <div class="individual-control-section">
+                <div class="subsection-title">Fan Between Channels Individual Control</div>
+                <div class="quick-controls">
+                    <button class="quick-control-btn" id="fan_btw_on">
+                        <span class="control-icon">✓</span>
+                        <span class="control-text">Turn ON</span>
+                    </button>
+                    <button class="quick-control-btn off-btn" id="fan_btw_off">
+                        <span class="control-icon">✕</span>
+                        <span class="control-text">Turn OFF</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <span class="control-label-small">Duration</span>
+                <div class="time-selector">
+                    <button class="time-btn" data-minutes="15">15 min</button>
+                    <button class="time-btn active" data-minutes="30">30 min</button>
+                    <button class="time-btn" data-minutes="45">45 min</button>
+                    <button class="time-btn" data-minutes="60">1 hour</button>
+                    <button class="time-btn" data-minutes="90">1.5 hr</button>
+                    <button class="time-btn" data-minutes="120">2 hr</button>
+                    <button class="time-btn" data-minutes="180">3 hr</button>
+                    <button class="time-btn" data-minutes="240">4 hr</button>
+                </div>
+                <input type="hidden" id="duration_value" value="30">
+            </div>
+
+            <div class="repeat-section">
+                <div class="repeat-header">
+                    <span class="control-label-small">Repeat Cycle</span>
+                    <label class="toggle-switch-medium">
+                        <input type="checkbox" id="repeat_enabled">
+                        <span class="slider-medium"></span>
+                    </label>
+                </div>
+                <div id="repeat_options" style="display: none;">
+                    <span class="control-label-small">Interval Between Cycles</span>
+                    <div class="time-selector">
+                        <button class="time-btn-small active" data-interval="30">30 min</button>
+                        <button class="time-btn-small" data-interval="45">45 min</button>
+                        <button class="time-btn-small" data-interval="60">1 hour</button>
+                        <button class="time-btn-small" data-interval="90">1.5 hr</button>
+                        <button class="time-btn-small" data-interval="120">2 hr</button>
+                        <button class="time-btn-small" data-interval="180">3 hr</button>
+                    </div>
+                    <input type="hidden" id="repeat_interval_value" value="30">
+                </div>
+            </div>
+
+            <button class="btn-apply" id="apply_ac_auto">
+                <span class="btn-icon">✓</span>
+                Apply Cooler Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- AC Split -->
+    <div class="section">
+        <div class="section-title">
+            ❄️ Split Air Conditioner
+            <span class="status-badge-inline" id="ac_split_status_badge">
+                <span class="status-dot-inline status-off"></span>
+                <span class="status-text">OFF</span>
+            </span>
+        </div>
+        
+        <div class="ac-card">
+            <div class="status-display-panel">
+                <div class="status-item">
+                    <span class="status-label">System Status:</span>
+                    <span class="status-value" id="ac_split_system_status">OFF</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Target Temperature:</span>
+                    <span class="status-value" id="ac_split_temp_status">-</span>
+                </div>
+            </div>
+
+            <div class="ac-power-section">
+                <div class="power-control">
+                    <span class="power-label">Power</span>
+                    <label class="toggle-switch-large">
+                        <input type="checkbox" id="ac_split_power">
+                        <span class="slider-large"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-label">
+                    <span class="label-icon">🌡️</span>
+                    <span>Temperature</span>
+                    <span class="value-display temp-display" id="temp_display">23°C</span>
+                </div>
+                <input type="range" id="temp_slider" class="custom-slider temp-slider" min="16" max="30" value="23">
+                <div class="temp-labels">
+                    <span>16°C</span>
+                    <span>23°C</span>
+                    <span>30°C</span>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <span class="control-label-small">Duration</span>
+                <div class="time-selector">
+                    <button class="time-btn" data-minutes-split="30">30 min</button>
+                    <button class="time-btn active" data-minutes-split="60">1 hour</button>
+                    <button class="time-btn" data-minutes-split="120">2 hr</button>
+                    <button class="time-btn" data-minutes-split="180">3 hr</button>
+                    <button class="time-btn" data-minutes-split="240">4 hr</button>
+                    <button class="time-btn" data-minutes-split="360">6 hr</button>
+                    <button class="time-btn" data-minutes-split="480">8 hr</button>
+                </div>
+                <input type="hidden" id="duration_split_value" value="60">
+            </div>
+
+            <div class="repeat-section">
+                <div class="repeat-header">
+                    <span class="control-label-small">Repeat Cycle</span>
+                    <label class="toggle-switch-medium">
+                        <input type="checkbox" id="repeat_split_enabled">
+                        <span class="slider-medium"></span>
+                    </label>
+                </div>
+                <div id="repeat_split_options" style="display: none;">
+                    <span class="control-label-small">Interval Between Cycles</span>
+                    <div class="time-selector">
+                        <button class="time-btn-small active" data-interval-split="30">30 min</button>
+                        <button class="time-btn-small" data-interval-split="60">1 hour</button>
+                        <button class="time-btn-small" data-interval-split="120">2 hr</button>
+                        <button class="time-btn-small" data-interval-split="180">3 hr</button>
+                    </div>
+                    <input type="hidden" id="repeat_split_interval_value" value="30">
+                </div>
+            </div>
+
+            <button class="btn-apply" id="apply_ac_split">
+                <span class="btn-icon">✓</span>
+                Apply AC Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Door Controls -->
+    <div class="section">
+        <div class="section-title">Door Controls</div>
+        <div class="door-controls">
+            <button class="door-button" id="toggle_main_door_btn">🚪 Main Door</button>
+            <button class="door-button" id="toggle_parking_door_btn">🚗 Parking Door</button>
+        </div>
+    </div>
+
+    <!-- Upload Server Control -->
+    <div class="section">
+        <div class="section-title">
+            📤 Upload Server
+            <span class="status-badge-inline" id="upload_server_status_badge">
+                <span class="status-dot-inline status-off"></span>
+                <span class="status-text">OFF</span>
+            </span>
+        </div>
+        
+        <div class="upload-server-card">
+            <div class="status-display-panel">
+                <div class="status-item">
+                    <span class="status-label">Server Status:</span>
+                    <span class="status-value" id="upload_server_status">OFF</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Port:</span>
+                    <span class="status-value" id="upload_server_port">-</span>
+                </div>
+            </div>
+
+            <div class="ac-power-section">
+                <div class="power-control">
+                    <span class="power-label">Upload Server</span>
+                    <label class="toggle-switch-large">
+                        <input type="checkbox" id="upload_server_toggle">
+                        <span class="slider-large"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="upload-server-info">
+                <div class="info-card">
+                    <div class="info-icon">📁</div>
+                    <div class="info-content">
+                        <div class="info-title">Upload Files</div>
+                        <div class="info-description">Upload and manage files</div>
+                        <a href="http://192.4.10.5:8000" target="_blank" class="info-link" id="upload_admin_link">
+                            Open Admin Panel →
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">🔗</div>
+                    <div class="info-content">
+                        <div class="info-title">Public Access</div>
+                        <div class="info-description">Share files with others</div>
+                        <a href="http://192.4.10.5:8000/files" target="_blank" class="info-link" id="upload_public_link">
+                            Open Public Page →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <button class="action-btn" onclick="window.open('http://192.4.10.5:8000', '_blank')" id="open_upload_btn">
+                    <span class="btn-icon">🌐</span>
+                    Open Upload Server
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

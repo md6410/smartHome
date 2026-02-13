@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .header { 
+            background: #075E54; 
+            color: white; 
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+        .header h2 {
+            margin: 0;
+            flex: 1;
+        }
+        .header .profile-pic {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+            border: 2px solid white;
+            object-fit: cover;
+        }
+        .header a, .header button {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            margin-left: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .header a:hover, .header button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .user-item { 
+            padding: 15px; 
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-item:hover { 
+            background: #f8f8f8;
+        }
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-info strong {
+            font-size: 16px;
+            color: #333;
+        }
+        .chat-preview { 
+            color: #666; 
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .unread-badge {
+            background: #25D366;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+        .online-indicator {
+            width: 12px;
+            height: 12px;
+            background: #25D366;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 15px;
+            left: 50px;
+            border: 2px solid white;
+        }
+        .offline-indicator {
+            display: none;
+        }
+        .group-badge {
+            background: #075E54;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+        h3 {
+            color: #333;
+            border-bottom: 2px solid #075E54;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        h3:first-child {
+            margin-top: 0;
+        }
+        .user-count {
+            background: #25D366;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .notification-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #25D366;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            transform: translateY(-100%);
+            transition: transform 0.3s;
+            z-index: 1000;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .notification-bar.show {
+            transform: translateY(0);
+        }
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="notificationBar" class="notification-bar">
+        <span id="notificationText"></span>
+    </div>
+
+    <div class="header">
+        <img src="{{ url_for('static', filename='avatars/' + current_user.profile_picture) }}" class="profile-pic">
+        <h2>{{ current_user.username }}</h2>
+        <a href="{{ url_for('settings') }}">⚙️ Settings</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('create_user') }}">👤 Users</a>
+        <a href="{{ url_for('manage_groups') }}">👥 Groups</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+    
+    <div class="container">
+        {% if groups %}
+        <h3>My Groups</h3>
+        {% for item in groups %}
+        <div class="user-item" onclick="location.href='{{ url_for('group_chat', group_id=item.group.id) }}'">
+            <img src="{{ url_for('static', filename='avatars/' + item.group.avatar) }}" class="user-avatar">
+            <div class="user-info">
+                <div>
+                    <strong>{{ item.group.name }}</strong>
+                    <span class="group-badge">GROUP</span>
+                </div>
+                <div class="chat-preview">{{ item.last_message }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if chat_list %}
+        <h3>Recent Chats</h3>
+        {% for chat in chat_list %}
+        <div class="user-item" onclick="location.href='{{ url_for('chat', user_id=chat.user.id) }}'">
+            <div style="position: relative;">
+                <img src="{{ url_for('static', filename='avatars/' + chat.user.profile_picture) }}" class="user-avatar">
+                {% if chat.is_online %}
+                <span class="online-indicator"></span>
+                {% endif %}
+            </div>
+            <div class="user-info">
+                <div><strong>{{ chat.user.username }}</strong></div>
+                <div class="chat-preview">{{ chat.last_message }}</div>
+            </div>
+            {% if chat.unread_count > 0 %}
+            <span class="unread-badge" id="unread-{{ chat.user.id }}">{{ chat.unread_count }}</span>
+            {% else %}
+            <span class="unread-badge" id="unread-{{ chat.user.id }}" style="display: none;"></span>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        <h3>All Users <span class="user-count">{{ users|length }}/50</span></h3>
+        {% if users|length == 0 %}
+        <div class="empty-state">
+            No other users yet. Admin needs to create users.
+        </div>
+        {% endif %}
+        {% for user in users %}
+        <div class="user-item" onclick="location.href='{{ url_for('chat', user_id=user.id) }}'">
+            <div style="position: relative;">
+                <img src="{{ url_for('static', filename='avatars/' + user.profile_picture) }}" class="user-avatar">
+                {% if user.id in active_users %}
+                <span class="online-indicator" id="status-{{ user.id }}"></span>
+                {% endif %}
+            </div>
+            <div class="user-info">
+                <strong>{{ user.username }}</strong>
+            </div>
+            <span class="unread-badge" id="unread-{{ user.id }}" style="display: none;"></span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        var socketio = io();
+        var currentUserId = {{ current_user.id }};
+        
+        // Get user's volume setting
+        var userVolume = 0.5;
+        fetch('/get-volume')
+            .then(response => response.json())
+            .then(data => {
+                userVolume = data.volume;
+            })
+            .catch(err => console.log('Volume fetch error:', err));
+        
+        // Notification sound
+        function playNotificationSound() {
+            var audio = new Audio('{{ url_for("static", filename="sounds/notification.mp3") }}');
+            audio.volume = userVolume;
+            audio.play().catch(function(error) {
+                console.log('Could not play sound:', error);
+            });
+        }
+        
+        // Show notification bar
+        function showNotification(username, message) {
+            var notifBar = document.getElementById('notificationBar');
+            var notifText = document.getElementById('notificationText');
+            
+            notifText.textContent = username + ': ' + (message.length > 50 ? message.substring(0, 50) + '...' : message);
+            notifBar.classList.add('show');
+            
+            setTimeout(function() {
+                notifBar.classList.remove('show');
+            }, 4000);
+        }
+        
+        // Update unread badge
+        function updateUnreadBadge(userId, count) {
+            var badge = document.getElementById('unread-' + userId);
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+        
+        // Listen for new messages (private chat)
+        socketio.on('new_message', function(data) {
+            var badge = document.getElementById('unread-' + data.sender_id);
+            var currentCount = badge && badge.style.display !== 'none' ? parseInt(badge.textContent) : 0;
+            updateUnreadBadge(data.sender_id, currentCount + 1);
+            
+            showNotification(data.sender_name, data.message);
+            playNotificationSound();
+        });
+        
+        // Listen for new group messages
+        socketio.on('new_group_message', function(data) {
+            // Show notification for group messages
+            var groupName = data.group_name || 'Group';
+            var displayMsg = data.msg_type === 'text' ? data.message : '📎 ' + data.msg_type;
+            showNotification(groupName + ' - ' + data.sender_name, displayMsg);
+            playNotificationSound();
+        });
+        
+        // Update online status
+        socketio.on('user_online', function(data) {
+            var indicator = document.getElementById('status-' + data.user_id);
+            if (indicator) {
+                indicator.className = 'online-indicator';
+                indicator.style.display = 'block';
+            }
+        });
+        
+        socketio.on('user_offline', function(data) {
+            var indicator = document.getElementById('status-' + data.user_id);
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        });
+        
+        // Click notification to dismiss
+        document.getElementById('notificationBar').addEventListener('click', function() {
+            this.classList.remove('show');
+        });
+    </script>
+</body>
+</html>

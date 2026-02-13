@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Group</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .header { 
+            background: #dc3545; 
+            color: white; 
+            padding: 15px 20px;
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        .header a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .container {
+            max-width: 700px;
+            margin: 20px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .avatar-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .group-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #075E54;
+        }
+        .upload-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .upload-btn:hover {
+            background: #20ba5a;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        button.save-btn {
+            width: 100%;
+            padding: 15px;
+            background: #075E54;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button.save-btn:hover {
+            background: #064d45;
+        }
+        .member-list {
+            margin-top: 30px;
+        }
+        .member-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #ddd;
+            margin: 8px 0;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .member-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover;
+        }
+        .member-item strong {
+            flex: 1;
+        }
+        .member-item .remove-btn {
+            margin-left: auto;
+            background: #dc3545;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .member-item .remove-btn:hover {
+            background: #c82333;
+        }
+        .add-member {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .add-member h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .add-member select {
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .add-member button {
+            width: 28%;
+            padding: 10px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .add-member button:hover {
+            background: #20ba5a;
+        }
+        h3 {
+            color: #333;
+            border-bottom: 2px solid #075E54;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>✏️ Edit Group</h2>
+        <a href="{{ url_for('manage_groups') }}">← Back</a>
+    </div>
+    
+    <div class="container">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="avatar-section">
+                <h3>Group Avatar</h3>
+                <img src="{{ url_for('static', filename='avatars/' + group.avatar) }}" class="group-avatar" id="avatarPreview">
+                <br>
+                <input type="file" name="group_avatar" id="avatarInput" accept="image/*" onchange="previewImage(event)">
+                <button type="button" class="upload-btn" onclick="document.getElementById('avatarInput').click()">
+                    📷 Change Avatar
+                </button>
+            </div>
+            
+            <h3>Group Name</h3>
+            <input type="text" name="group_name" value="{{ group.name }}" required placeholder="Enter group name">
+            
+            <button type="submit" class="save-btn">💾 Save Changes</button>
+        </form>
+        
+        <div class="member-list">
+            <h3>Group Members ({{ members|length }})</h3>
+            {% if members|length == 0 %}
+            <p style="text-align: center; color: #666; padding: 20px;">No members in this group yet.</p>
+            {% endif %}
+            
+            {% for member in members %}
+            <div class="member-item">
+                <img src="{{ url_for('static', filename='avatars/' + member.user.profile_picture) }}">
+                <strong>{{ member.user.username }}</strong>
+                <form method="POST" action="{{ url_for('remove_group_member', group_id=group.id, user_id=member.user.id) }}" style="margin: 0;">
+                    <button type="submit" class="remove-btn" onclick="return confirm('Remove {{ member.user.username }} from group?')">
+                        ✖️ Remove
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+            
+            <div class="add-member">
+                <h4>Add Member</h4>
+                <form method="POST" action="{{ url_for('add_group_member', group_id=group.id, user_id=0) }}" id="addMemberForm" style="display: flex; gap: 10px;">
+                    <select name="user_id" id="userSelect" required>
+                        <option value="">Select user to add...</option>
+                        {% for user in all_users %}
+                            {% set is_member = namespace(value=false) %}
+                            {% for member in members %}
+                                {% if member.user.id == user.id %}
+                                    {% set is_member.value = true %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if not is_member.value %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button type="submit">➕ Add</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function previewImage(event) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                document.getElementById('avatarPreview').src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+        
+        document.getElementById

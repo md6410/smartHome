@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ group.name }} - Group Chat</title>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; background: #e5ddd5; }
+        .header { background: #075E54; color: white; padding: 10px 16px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); position: fixed; top: 0; width: 100%; z-index: 100; display: flex; align-items: center; height: 60px; }
+        .header a { color: white; font-size: 24px; margin-right: 20px; text-decoration: none; }
+        .header .group-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); }
+        .header .group-info { flex: 1; }
+        .header .group-name { font-size: 16px; font-weight: 500; }
+        .header .group-members { font-size: 13px; opacity: 0.8; }
+        .header .mute-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .header .mute-btn:hover { background: rgba(255,255,255,0.3); }
+        .header .mute-btn.muted { background: #dc3545; }
+        .notification-bar { position: fixed; top: 60px; left: 0; right: 0; background: #25D366; color: white; padding: 12px; text-align: center; transform: translateY(-100%); transition: transform 0.3s; z-index: 99; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .notification-bar.show { transform: translateY(0); }
+        .upload-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .upload-overlay.show { display: flex; }
+        .upload-box { background: white; padding: 30px; border-radius: 10px; text-align: center; min-width: 300px; }
+        .upload-box h3 { margin-bottom: 20px; color: #333; }
+        .progress-bar { width: 100%; height: 30px; background: #f0f0f0; border-radius: 15px; overflow: hidden; margin-bottom: 15px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #25D366 0%, #20ba5a 100%); width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; }
+        .upload-filename { color: #666; font-size: 14px; margin-bottom: 10px; word-break: break-all; }
+        .cancel-upload { background: #dc3545; color: white; padding: 8px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        .cancel-upload:hover { background: #c82333; }
+        #messages { height: calc(100vh - 130px); overflow-y: auto; padding: 70px 10% 20px 10%; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAMElEQVQYV2NkYGD4z8DAwMgABXAGEwMDAxMDlMEIdQcjsgJGqBuYGKEqGRkwJJgYAEhKAwMVokj2AAAAAElFTkSuQmCC'); background-repeat: repeat; }
+        .message-wrapper { margin-bottom: 12px; clear: both; }
+        .message { padding: 6px 7px 8px 9px; border-radius: 7.5px; max-width: 65%; word-wrap: break-word; position: relative; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); display: inline-block; }
+        .sent { background: #DCF8C6; float: right; border-top-right-radius: 0; }
+        .received { background: white; float: left; border-top-left-radius: 0; }
+        .message-header { display: flex; align-items: center; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .message-header img { width: 28px; height: 28px; border-radius: 50%; margin-right: 8px; object-fit: cover; }
+        .message-header .sender-name { font-weight: bold; font-size: 13px; color: #075E54; }
+        .message-content { font-size: 14.2px; line-height: 19px; margin-bottom: 3px; }
+        .message-footer { font-size: 11px; color: rgba(0,0,0,0.45); text-align: right; margin-top: 4px; }
+        .input-area { padding: 10px 10%; position: fixed; bottom: 0; width: 100%; background: #f0f0f0; box-shadow: 0 -1px 1px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 5px; }
+        #messageInput { flex: 1; padding: 10px 15px; border: none; border-radius: 21px; font-size: 15px; background: white; }
+        .icon-btn { width: 40px; height: 40px; background: transparent; color: #54656F; border: none; cursor: pointer; border-radius: 50%; font-size: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .icon-btn:hover { background: rgba(0,0,0,0.05); }
+        .send-btn { width: 40px; height: 40px; background: #25D366; color: white; border: none; cursor: pointer; border-radius: 50%; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .send-btn:hover { background: #20ba5a; }
+        img.chat-image { max-width: 300px; max-height: 300px; border-radius: 5px; display: block; margin-bottom: 5px; cursor: pointer; }
+        input[type="file"] { display: none; }
+        audio { max-width: 250px; }
+        .location-message { background: white; border-radius: 8px; overflow: hidden; max-width: 300px; cursor: pointer; padding: 15px; text-align: center; }
+        .location-message .location-icon { font-size: 50px; }
+        .location-text { font-size: 13px; color: #667781; margin-top: 10px; }
+        .record-btn.recording { background: #ef5350 !important; color: white !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    </style>
+</head>
+<body>
+    <div id="notificationBar" class="notification-bar">
+        <span id="notificationText"></span>
+    </div>
+
+    <div class="upload-overlay" id="uploadOverlay">
+        <div class="upload-box">
+            <h3>📤 Uploading File</h3>
+            <div class="upload-filename" id="uploadFilename"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <button class="cancel-upload" onclick="cancelUpload()">Cancel</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <a href="{{ url_for('dashboard') }}">←</a>
+        <img src="{{ url_for('static', filename='avatars/' + group.avatar) }}" class="group-avatar">
+        <div class="group-info">
+            <div class="group-name">{{ group.name }}</div>
+            <div class="group-members">{{ members|length }} members</div>
+        </div>
+        <button class="mute-btn {% if is_muted %}muted{% endif %}" id="muteBtn" onclick="toggleMute()">
+            <span id="muteText">{% if is_muted %}🔕 Unmute{% else %}🔔 Mute{% endif %}</span>
+        </button>
+    </div>
+    
+    <div id="messages">
+        {% for msg in messages %}
+            <div class="message-wrapper">
+                <div class="message {% if msg.sender_id == current_user.id %}sent{% else %}received{% endif %}">
+                    {% if msg.sender_id != current_user.id %}
+                    <div class="message-header">
+                        <img src="{{ url_for('static', filename='avatars/' + msg.sender.profile_picture) }}">
+                        <span class="sender-name">{{ msg.sender.username }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="message-content">
+                        {% if msg.msg_type == 'text' %}
+                            {{ msg.content }}
+                        {% elif msg.msg_type == 'image' %}
+                            <img class="chat-image" src="{{ url_for('download_file', filename=msg.file_path) }}" onclick="window.open(this.src)">
+                        {% elif msg.msg_type == 'voice' %}
+                            <audio controls>
+                                <source src="{{ url_for('download_file', filename=msg.file_path) }}" type="audio/webm">
+                            </audio>
+                        {% elif msg.msg_type == 'location' %}
+                            <div class="location-message" onclick="alert('Latitude: {{ msg.latitude }}\nLongitude: {{ msg.longitude }}')">
+                                <div class="location-icon">📍</div>
+                                <div class="location-text">
+                                    موقعیت مکانی<br>
+                                    Lat: {{ msg.latitude|round(6) }}<br>
+                                    Lng: {{ msg.longitude|round(6) }}
+                                </div>
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('download_file', filename=msg.file_path) }}" style="color: #027eb5;">📎 {{ msg.content }}</a>
+                        {% endif %}
+                    </div>
+                    <div class="message-footer">
+                        {{ msg.timestamp.strftime('%H:%M') }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div class="input-area">
+        <button class="icon-btn" onclick="document.getElementById('imageInput').click()" title="Send Photo">📷</button>
+        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Send File">📎</button>
+        <button class="icon-btn" id="recordBtn" onclick="toggleRecording()" title="Record Voice">🎤</button>
+        <button class="icon-btn" onclick="sendLocation()" title="Share Location">📍</button>
+        
+        <input type="text" id="messageInput" placeholder="Type a message">
+        <button class="send-btn" onclick="sendMessage()" title="Send">➤</button>
+        
+        <input type="file" id="imageInput" accept="image/*">
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.zip,.rar">
+    </div>
+    
+    <script>
+        var socketio = io();
+        var groupId = {{ group.id }};
+        var currentUserId = {{ current_user.id }};
+        var currentUserPicture = '{{ current_user.profile_picture }}';
+        var isMuted = {{ 'true' if is_muted else 'false' }};
+        var messages = document.getElementById('messages');
+        var messageInput = document.getElementById('messageInput');
+        var imageInput = document.getElementById('imageInput');
+        var fileInput = document.getElementById('fileInput');
+        var recordBtn = document.getElementById('recordBtn');
+        var uploadXHR = null;
+        
+        var mediaRecorder;
+        var audioChunks = [];
+        var isRecording = false;
+        
+        messages.scrollTop = messages.scrollHeight;
+        
+        socketio.emit('mark_group_read', {group_id: groupId});
+        
+        function playNotificationSound() {
+            if (isMuted) return;
+            
+            fetch('/get-volume')
+                .then(response => response.json())
+                .then(data => {
+                    var audio = new Audio('{{ url_for("static", filename="sounds/notification.mp3") }}');
+                    audio.volume = data.volume;
+                    audio.play();
+                });
+        }
+        
+        function showNotification(groupName, senderName, message) {
+            if (isMuted) return;
+            
+            var notifBar = document.getElementById('notificationBar');
+            var notifText = document.getElementById('notificationText');
+            
+            notifText.textContent = groupName + ' - ' + senderName + ': ' + (message.length > 40 ? message.substring(0, 40) + '...' : message);
+            notifBar.classList.add('show');
+            notifBar.onclick = function() {
+                window.location.href = '/dashboard';
+            };
+            
+            setTimeout(function() {
+                notifBar.classList.remove('show');
+            }, 4000);
+        }
+        
+        function toggleMute() {
+            var url = isMuted ? '/unmute-group/' + groupId : '/mute-group/' + groupId;
+            fetch(url, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    isMuted = !isMuted;
+                    var muteBtn = document.getElementById('muteBtn');
+                    var muteText = document.getElementById('muteText');
+                    
+                    if (isMuted) {
+                        muteBtn.classList.add('muted');
+                        muteText.textContent = '🔕 Unmute';
+                    } else {
+                        muteBtn.classList.remove('muted');
+                        muteText.textContent = '🔔 Mute';
+                    }
+                });
+        }
+        
+        socketio.on('new_group_message', function(data) {
+            if (data.group_id == groupId) {
+                addMessage(data.sender_name, data.sender_picture, data.message, data.msg_type, data.file_data, data.file_path, data.latitude, data.longitude, 'received', data.timestamp);
+                playNotificationSound();
+            } else {
+                showNotification(data.group_name, data.sender_name, data.message);
+                playNotificationSound();
+            }
+        });
+        
+        socketio.on('group_message_sent', function(data) {
+            addMessage(null, null, data.message, data.msg_type, data.file_data, data.file_path, data.latitude, data.longitude, 'sent', data.timestamp);
+            
+            if (document.getElementById('uploadOverlay').classList.contains('show')) {
+                completeUpload();
+            }
+        });
+        
+        function addMessage(senderName, senderPicture, content, type, fileData, filePath, lat, lng, className, timestamp) {
+            var wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+            
+            var div = document.createElement('div');
+            div.className = 'message ' + className;
+            
+            if (className === 'received' && senderName) {
+                var header = document.createElement('div');
+                header.className = 'message-header';
+                
+                var img = document.createElement('img');
+                img.src = '{{ url_for("static", filename="avatars/") }}' + senderPicture;
+                header.appendChild(img);
+                
+                var name = document.createElement('span');
+                name.className = 'sender-name';
+                name.textContent = senderName;
+                header.appendChild(name);
+                
+                div.appendChild(header);
+            }
+            
+            var contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (type === 'text') {
+                contentDiv.textContent = content;
+            } else if (type === 'image') {
+                var img = document.createElement('img');
+                img.className = 'chat-image';
+                img.src = fileData || '/download/' + filePath;
+                img.onclick = function() { window.open(this.src); };
+                contentDiv.appendChild(img);
+            } else if (type === 'voice') {
+                var audio = document.createElement('audio');
+                audio.controls = true;
+                var source = document.createElement('source');
+                source.src = fileData || '/download/' + filePath;
+                source.type = 'audio/webm';
+                audio.appendChild(source);
+                contentDiv.appendChild(audio);
+            } else if (type === 'location') {
+                var locDiv = document.createElement('div');
+                locDiv.className = 'location-message';
+                locDiv.onclick = function() {
+                    alert('Latitude: ' + lat + '\nLongitude: ' + lng);
+                };
+                locDiv.innerHTML = `
+                    <div class="location-icon">📍</div>
+                    <div class="location-text">
+                        موقعیت مکانی<br>
+                        Lat: ${lat.toFixed(6)}<br>
+                        Lng: ${lng.toFixed(6)}
+                    </div>
+                `;
+                contentDiv.appendChild(locDiv);
+            } else {
+                var link = document.createElement('a');
+                link.href = '/download/' + filePath;
+                link.style.color = '#027eb5';
+                link.textContent = '📎 ' + content;
+                contentDiv.appendChild(link);
+            }
+            
+            var footer = document.createElement('div');
+            footer.className = 'message-footer';
+            footer.textContent = timestamp;
+            
+            div.appendChild(contentDiv);
+            div.appendChild(footer);
+            wrapper.appendChild(div);
+            messages.appendChild(wrapper);
+            
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        function sendMessage() {
+            var message = messageInput.value.trim();
+            if (message === '') return;
+            
+            socketio.emit('group_message', {
+                group_id: groupId,
+                message: message
+            });
+            
+            messageInput.value = '';
+        }
+        
+        imageInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                sendFile(this.files[0], 'image');
+                this.value = '';
+            }
+        });
+        
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                sendFile(this.files[0], 'file');
+                this.value = '';
+            }
+        });
+        
+        function sendFile(file, type) {
+            if (!file) return;
+            
+            if (file.size > 50 * 1024 * 1024) {
+                alert('File too large. Maximum 50MB');
+                return;
+            }
+            
+            document.getElementById('uploadOverlay').classList.add('show');
+            document.getElementById('uploadFilename').textContent = file.name;
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressFill').textContent = '0%';
+            
+            var reader = new FileReader();
+            
+            reader.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var progress = Math.round((e.loaded / e.total) * 80);
+                    document.getElementById('progressFill').style.width = progress + '%';
+                    document.getElementById('progressFill').textContent = progress + '%';
+                }
+            };
+            
+            reader.onload = function(e) {
+                var fileData = e.target.result;
+                
+                document.getElementById('progressFill').style.width = '85%';
+                document.getElementById('progressFill').textContent = '85%';
+                
+                setTimeout(function() {
+                    document.getElementById('progressFill').style.width = '90%';
+                    document.getElementById('progressFill').textContent = '90%';
+                    
+                    socketio.emit('group_file_upload', {
+                        group_id: groupId,
+                        filename: file.name,
+                        file: fileData,
+                        type: type
+                    });
+                    
+                    setTimeout(function() {
+                        document.getElementById('progressFill').style.width = '95%';
+                        document.getElementById('progressFill').textContent = '95%';
+                    }, 300);
+                    
+                }, 200);
+            };
+            
+            reader.onerror = function() {
+                alert('Error reading file');
+                document.getElementById('uploadOverlay').classList.remove('show');
+            };
+            
+            reader.readAsDataURL(file);
+            uploadXHR = { cancel: function() { reader.abort(); } };
+        }
+        
+        function cancelUpload() {
+            if (uploadXHR) {
+                uploadXHR.cancel();
+                uploadXHR = null;
+            }
+            document.getElementById('uploadOverlay').classList.remove('show');
+        }
+        
+        function completeUpload() {
+            document.getElementById('progressFill').style.width = '100%';
+            document.getElementById('progressFill').textContent = '100%';
+            
+            setTimeout(function() {
+                document.getElementById('uploadOverlay').classList.remove('show');
+            }, 800);
+        }
+        
+        function sendLocation() {
+            if (!navigator.geolocation) {
+                alert('مرورگر شما از موقعیت یابی پشتیبانی نمی‌کند');
+                return;
+            }
+            
+            var btn = event.target;
+            var originalText = btn.textContent;
+            btn.textContent = '⏳';
+            btn.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                
+                var canvas = document.createElement('canvas');
+                canvas.width = 1;
+                canvas.height = 1;
+                var dataUrl = canvas.toDataURL();
+                
+                socketio.emit('group_file_upload', {
+                    group_id: groupId,
+                    filename: 'Location',
+                    file: dataUrl,
+                    type: 'location',
+                    latitude: lat,
+                    longitude: lng
+                });
+                
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, function(error) {
+                alert('امکان دریافت موقعیت مکانی وجود ندارد');
+                btn.textContent = originalText;
+                btn.disabled = false;
+            });
+        }
+        
+        async function toggleRecording() {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = function(event) {
+                        audioChunks.push(event.data);
+                    };
+                    
+                    mediaRecorder.onstop = function() {
+                        var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        var reader = new FileReader();
+                        reader.onloadend = function() {
+                            socketio.emit('group_file_upload', {
+                                group_id: groupId,
+                                filename: 'voice_' + Date.now() + '.webm',
+                                file: reader.result,
+                                type: 'voice'
+                            });
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordBtn.classList.add('recording');
+                    recordBtn.textContent = '⏹️';
+                } catch (err) {
+                    alert('دسترسی به میکروفون رد شد');
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                recordBtn.textContent = '🎤';
+            }
+        }
+        
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

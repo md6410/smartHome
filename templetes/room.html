@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room - {{ code }}</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Room: {{ code }}</h1>
+    <a href="/">Leave Room</a>
+    
+    <div id="messages" style="height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;">
+        {% for msg in messages %}
+            <p><strong>{{ msg.name }}:</strong> {{ msg.message }}</p>
+        {% endfor %}
+    </div>
+    
+    <input type="text" id="message" placeholder="Type your message...">
+    <button onclick="sendMessage()">Send</button>
+    
+    <script>
+        var socketio = io();
+        
+        const messages = document.getElementById("messages");
+        const messageInput = document.getElementById("message");
+        
+        socketio.on("message", function(data) {
+            const p = document.createElement("p");
+            p.innerHTML = "<strong>" + data.name + ":</strong> " + data.message;
+            messages.appendChild(p);
+            messages.scrollTop = messages.scrollHeight;
+        });
+        
+        function sendMessage() {
+            const message = messageInput.value;
+            if (message == "") return;
+            socketio.emit("message", {data: message});
+            messageInput.value = "";
+        }
+        
+        messageInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

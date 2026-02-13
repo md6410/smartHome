@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .header { 
+            background: #075E54; 
+            color: white; 
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .profile-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .profile-pic {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #075E54;
+        }
+        .upload-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .volume-section {
+            margin: 30px 0;
+        }
+        .volume-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        .volume-value {
+            text-align: center;
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        button.save-btn {
+            width: 100%;
+            padding: 15px;
+            background: #075E54;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .success {
+            background: #25D366;
+            color: white;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>⚙️ Settings</h2>
+        <a href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+    </div>
+    
+    <div class="container">
+        {% if success %}
+        <div class="success">✅ {{ success }}</div>
+        {% endif %}
+        
+        <form method="POST" enctype="multipart/form-data">
+            <div class="profile-section">
+                <h3>Profile Picture</h3>
+                <img src="{{ url_for('static', filename='avatars/' + current_user.profile_picture) }}" class="profile-pic" id="profilePreview">
+                <br>
+                <input type="file" name="profile_picture" id="profileInput" accept="image/*" onchange="previewImage(event)">
+                <button type="button" class="upload-btn" onclick="document.getElementById('profileInput').click()">
+                    Change Picture
+                </button>
+            </div>
+            
+            <div class="volume-section">
+                <h3>Notification Volume</h3>
+                <input type="range" name="volume" class="volume-slider" min="0" max="1" step="0.1" 
+                       value="{{ current_user.notification_volume }}" 
+                       oninput="updateVolume(this.value)" id="volumeSlider">
+                <div class="volume-value" id="volumeValue">{{ (current_user.notification_volume * 100)|int }}%</div>
+                <button type="button" onclick="testSound()" style="padding: 8px 15px; background: #25D366; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    🔊 Test Sound
+                </button>
+            </div>
+            
+            <button type="submit" class="save-btn">💾 Save Settings</button>
+        </form>
+    </div>
+    
+    <script>
+        function previewImage(event) {
+            var reader = new FileReader();
+            reader.onload = function() {
+                document.getElementById('profilePreview').src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+        
+        function updateVolume(value) {
+            document.getElementById('volumeValue').textContent = Math.round(value * 100) + '%';
+        }
+        
+        function testSound() {
+            var volume = document.getElementById('volumeSlider').value;
+            var audio = new Audio('{{ url_for("static", filename="sounds/notification.mp3") }}');
+            audio.volume = parseFloat(volume);
+            audio.play();
+        }
+    </script>
+</body>
+</html>

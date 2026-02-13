@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Group</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .header { 
+            background: #dc3545; 
+            color: white; 
+            padding: 15px 20px;
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .user-checkbox {
+            padding: 12px;
+            border: 1px solid #ddd;
+            margin: 8px 0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .user-checkbox input {
+            margin-right: 10px;
+        }
+        .user-checkbox img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .error {
+            background: #dc3545;
+            color: white;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>👥 Create Group</h2>
+        <a href="{{ url_for('manage_groups') }}">← Back</a>
+    </div>
+    
+    <div class="container">
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST">
+            <h3>Group Name</h3>
+            <input type="text" name="group_name" placeholder="Enter group name" required>
+            
+            <h3>Select Members</h3>
+            {% for user in users %}
+            <label class="user-checkbox">
+                <input type="checkbox" name="members" value="{{ user.id }}">
+                <img src="{{ url_for('static', filename='avatars/' + user.profile_picture) }}">
+                <strong>{{ user.username }}</strong>
+            </label>
+            {% endfor %}
+            
+            <button type="submit">✅ Create Group</button>
+        </form>
+    </div>
+</body>
+</html>
