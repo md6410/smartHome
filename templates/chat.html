@@ -84,7 +84,8 @@
                         {% if msg.msg_type == 'text' %}
                             {{ msg.content }}
                         {% elif msg.msg_type == 'image' %}
-                            <img class="chat-image" src="{{ url_for('download_file', filename=msg.file_path) }}" onclick="window.open(this.src)">
+                            <img class="chat-image" src="{{ url_for('chat_file', filename=msg.file_path) }}" onclick="window.open(this.src)">
+
                         {% elif msg.msg_type == 'voice' %}
                             <audio controls>
                                 <source src="{{ url_for('download_file', filename=msg.file_path) }}" type="audio/webm">
