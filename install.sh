@@ -1,17 +1,18 @@
 #!/bin/bash
 # =========================================
-# smartHome - COMPLETE 3-SERVER INSTALLER
-# Installs: app.py, uploadServer.py, chatServer.py + Caddy
+# smartHome - COMPLETE INSTALLER
+# Installs: app.py, chatServer.py + Caddy
+# uploadServer.py controlled from web interface
 # =========================================
 
 set -e
 
-echo "🚀 smartHome - Complete 3-Server Installation"
-echo "=============================================="
+echo "🚀 smartHome - Complete Installation"
+echo "======================================"
 echo "Installing:"
 echo "  ✓ Smart Home Control (port 5000)"
-echo "  ✓ Upload Server (port 8000)"
 echo "  ✓ Chat Server (port 5554)"
+echo "  ✓ Upload Server (web-controlled, port 8000)"
 echo "  ✓ Caddy (ports 80/443)"
 echo "  ✓ All dependencies"
 echo ""
@@ -48,14 +49,14 @@ echo ""
 # =========================================
 # 1. UPDATE SYSTEM
 # =========================================
-echo -e "${CYAN}[1/15] 🔄 Updating system...${NC}"
+echo -e "${CYAN}[1/14] 🔄 Updating system...${NC}"
 sudo apt update -y
 sudo apt upgrade -y
 
 # =========================================
 # 2. INSTALL SYSTEM PACKAGES
 # =========================================
-echo -e "${CYAN}[2/15] 📦 Installing system packages...${NC}"
+echo -e "${CYAN}[2/14] 📦 Installing system packages...${NC}"
 sudo apt install -y \
     python3 \
     python3-pip \
@@ -85,7 +86,7 @@ sudo apt install -y \
 # =========================================
 # 3. INSTALL PYTHON LIBRARIES
 # =========================================
-echo -e "${CYAN}[3/15] 🐍 Installing Python libraries...${NC}"
+echo -e "${CYAN}[3/14] 🐍 Installing Python libraries...${NC}"
 pip3 install --user --break-system-packages \
     flask \
     flask-login \
@@ -106,13 +107,13 @@ echo -e "${GREEN}✓ Python libraries installed${NC}"
 # =========================================
 # 4. CREATE ADDITIONAL FOLDERS
 # =========================================
-echo -e "${CYAN}[4/15] 📁 Creating folders...${NC}"
+echo -e "${CYAN}[4/14] 📁 Creating folders...${NC}"
 mkdir -p "$INSTALL_DIR"/{logs,uploads,instance}
 
 # =========================================
 # 5. VERIFY FILES
 # =========================================
-echo -e "${CYAN}[5/15] 📄 Verifying application files...${NC}"
+echo -e "${CYAN}[5/14] 📄 Verifying application files...${NC}"
 
 if [ ! -f "$INSTALL_DIR/app.py" ]; then
     echo -e "${RED}❌ ERROR: app.py not found${NC}"
@@ -137,7 +138,7 @@ echo -e "${GREEN}✓ Core files verified${NC}"
 # =========================================
 # 6. GENERATE SECRET KEY (if needed)
 # =========================================
-echo -e "${CYAN}[6/15] 🔐 Checking SECRET_KEY...${NC}"
+echo -e "${CYAN}[6/14] 🔐 Checking SECRET_KEY...${NC}"
 if grep -q "CHANGE-THIS-TO-YOUR-GENERATED-SECRET-KEY" "$INSTALL_DIR/app.py" 2>/dev/null; then
     SECRET_KEY=$(python3 -c "import os; print(os.urandom(24).hex())")
     sed -i "s/CHANGE-THIS-TO-YOUR-GENERATED-SECRET-KEY/$SECRET_KEY/g" "$INSTALL_DIR/app.py"
@@ -149,7 +150,7 @@ fi
 # =========================================
 # 7. INSTALL CADDY
 # =========================================
-echo -e "${CYAN}[7/15] 🌐 Installing Caddy web server...${NC}"
+echo -e "${CYAN}[7/14] 🌐 Installing Caddy web server...${NC}"
 
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
@@ -161,40 +162,39 @@ echo -e "${GREEN}✓ Caddy installed${NC}"
 # =========================================
 # 8. CONFIGURE CADDY
 # =========================================
-echo -e "${CYAN}[8/15] ⚙️ Configuring Caddy...${NC}"
+echo -e "${CYAN}[8/14] ⚙️ Configuring Caddy...${NC}"
 
 sudo tee /etc/caddy/Caddyfile > /dev/null <<'EOF'
-# Main access on port 80
-:80 {
-    # Smart Home Control
+# Main Smart Home Control - Primary Domain
+turingco.ir, www.turingco.ir {
     reverse_proxy localhost:5000
 }
 
-# Domain configuration (uncomment and edit after setup)
-# yourdomain.com {
-#     reverse_proxy localhost:5000
-# }
+# Upload Server Subdomain (runs when toggled from app.py)
+uploadserver.turingco.ir {
+    reverse_proxy localhost:8000
+}
 
-# Upload server on subdomain
-# upload.yourdomain.com {
-#     reverse_proxy localhost:8000
-# }
+# Chat Server Subdomain
+chat.turingco.ir {
+    reverse_proxy localhost:5554
+}
 
-# Chat server on subdomain
-# chat.yourdomain.com {
-#     reverse_proxy localhost:5554
-# }
+# Local network HTTP access (no domain)
+:80 {
+    reverse_proxy localhost:5000
+}
 EOF
 
 sudo systemctl enable caddy
 sudo systemctl restart caddy
 
-echo -e "${GREEN}✓ Caddy configured${NC}"
+echo -e "${GREEN}✓ Caddy configured with domains${NC}"
 
 # =========================================
 # 9. CREATE SYSTEMD - SMART HOME
 # =========================================
-echo -e "${CYAN}[9/15] 🏠 Creating Smart Home service...${NC}"
+echo -e "${CYAN}[9/14] 🏠 Creating Smart Home service...${NC}"
 
 sudo tee /etc/systemd/system/smarthome.service > /dev/null <<EOF
 [Unit]
@@ -220,40 +220,9 @@ EOF
 echo -e "${GREEN}✓ Smart Home service created${NC}"
 
 # =========================================
-# 10. CREATE SYSTEMD - UPLOAD
+# 10. CREATE SYSTEMD - CHAT
 # =========================================
-echo -e "${CYAN}[10/15] 📤 Creating Upload Server service...${NC}"
-
-if [ -f "$INSTALL_DIR/uploadServer.py" ]; then
-    sudo tee /etc/systemd/system/uploadserver.service > /dev/null <<EOF
-[Unit]
-Description=smartHome Upload Server
-After=network.target
-PartOf=smarthome-group.target
-
-[Service]
-Type=simple
-User=$USERNAME
-WorkingDirectory=$INSTALL_DIR
-ExecStart=/usr/bin/python3 $INSTALL_DIR/uploadServer.py
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-WantedBy=smarthome-group.target
-EOF
-    echo -e "${GREEN}✓ Upload server service created${NC}"
-else
-    echo -e "${YELLOW}⚠️ Skipped (uploadServer.py not found)${NC}"
-fi
-
-# =========================================
-# 11. CREATE SYSTEMD - CHAT
-# =========================================
-echo -e "${CYAN}[11/15] 💬 Creating Chat Server service...${NC}"
+echo -e "${CYAN}[10/14] 💬 Creating Chat Server service...${NC}"
 
 if [ -f "$INSTALL_DIR/chatServer.py" ]; then
     sudo tee /etc/systemd/system/chatserver.service > /dev/null <<EOF
@@ -282,23 +251,23 @@ else
 fi
 
 # =========================================
-# 12. CREATE SERVICE GROUP
+# 11. CREATE SERVICE GROUP
 # =========================================
-echo -e "${CYAN}[12/15] 🎯 Creating service group...${NC}"
+echo -e "${CYAN}[11/14] 🎯 Creating service group...${NC}"
 
 sudo tee /etc/systemd/system/smarthome-group.target > /dev/null <<EOF
 [Unit]
 Description=smartHome Service Group
-Wants=smarthome.service uploadserver.service chatserver.service
+Wants=smarthome.service chatserver.service
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 # =========================================
-# 13. SETUP GPIO & PERMISSIONS
+# 12. SETUP GPIO & PERMISSIONS
 # =========================================
-echo -e "${CYAN}[13/15] 🔧 Setting up permissions...${NC}"
+echo -e "${CYAN}[12/14] 🔧 Setting up permissions...${NC}"
 
 sudo usermod -a -G gpio,dialout,i2c,spi $USERNAME
 chmod +x "$INSTALL_DIR/app.py" 2>/dev/null || true
@@ -306,9 +275,9 @@ chmod +x "$INSTALL_DIR/uploadServer.py" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/chatServer.py" 2>/dev/null || true
 
 # =========================================
-# 14. CONFIGURE FIREWALL
+# 13. CONFIGURE FIREWALL
 # =========================================
-echo -e "${CYAN}[14/15] 🔒 Configuring firewall...${NC}"
+echo -e "${CYAN}[13/14] 🔒 Configuring firewall...${NC}"
 
 sudo ufw allow 22/tcp     # SSH
 sudo ufw allow 80/tcp     # HTTP
@@ -319,21 +288,19 @@ sudo ufw allow 5554/tcp   # Chat
 echo "y" | sudo ufw enable
 
 # =========================================
-# 15. START SERVICES
+# 14. START SERVICES
 # =========================================
-echo -e "${CYAN}[15/15] 🚀 Starting services...${NC}"
+echo -e "${CYAN}[14/14] 🚀 Starting services...${NC}"
 
 sudo systemctl daemon-reload
 
 # Enable services
 sudo systemctl enable smarthome.service
-[ -f "$INSTALL_DIR/uploadServer.py" ] && sudo systemctl enable uploadserver.service
 [ -f "$INSTALL_DIR/chatServer.py" ] && sudo systemctl enable chatserver.service
 sudo systemctl enable smarthome-group.target
 
 # Start services
 sudo systemctl start smarthome.service
-[ -f "$INSTALL_DIR/uploadServer.py" ] && sudo systemctl start uploadserver.service || true
 [ -f "$INSTALL_DIR/chatServer.py" ] && sudo systemctl start chatserver.service || true
 
 # Get IP
@@ -350,16 +317,24 @@ echo ""
 echo -e "${MAGENTA}📱 ACCESS YOUR SERVICES:${NC}"
 echo ""
 echo -e "${CYAN}🏠 Smart Home Control:${NC}"
-echo -e "   ${GREEN}http://$IP_ADDR${NC} (via Caddy)"
+echo -e "   ${GREEN}https://turingco.ir${NC} (main domain)"
+echo -e "   ${GREEN}http://$IP_ADDR${NC} (local network)"
 echo -e "   ${GREEN}http://$IP_ADDR:5000${NC} (direct)"
 echo ""
 echo -e "${CYAN}📤 Upload Server:${NC}"
-echo -e "   ${GREEN}http://$IP_ADDR:8000${NC}"
+echo -e "   ${GREEN}https://uploadserver.turingco.ir${NC}"
+echo -e "   ${YELLOW}Toggle ON/OFF from Smart Home dashboard${NC}"
 echo ""
 echo -e "${CYAN}💬 Chat Server:${NC}"
-echo -e "   ${GREEN}http://$IP_ADDR:5554${NC}"
+echo -e "   ${GREEN}https://chat.turingco.ir${NC}"
+echo -e "   ${GREEN}http://$IP_ADDR:5554${NC} (direct)"
 echo ""
-echo -e "${YELLOW}🔑 Check app.py for login credentials${NC}"
+echo -e "${YELLOW}📝 IMPORTANT DNS SETUP:${NC}"
+echo -e "   Add these DNS A records pointing to your public IP:"
+echo -e "   - turingco.ir → Your Public IP"
+echo -e "   - www.turingco.ir → Your Public IP"
+echo -e "   - uploadserver.turingco.ir → Your Public IP"
+echo -e "   - chat.turingco.ir → Your Public IP"
 echo ""
 echo -e "${CYAN}🔍 SERVICE MANAGEMENT:${NC}"
 echo ""
@@ -370,16 +345,16 @@ echo "   sudo systemctl restart smarthome-group.target"
 echo ""
 echo -e "${BLUE}Individual services:${NC}"
 echo "   sudo systemctl status smarthome.service"
-echo "   sudo systemctl status uploadserver.service"
 echo "   sudo systemctl status chatserver.service"
+echo "   sudo systemctl status caddy"
 echo ""
 echo -e "${BLUE}View logs:${NC}"
 echo "   journalctl -u smarthome.service -f"
-echo "   journalctl -u uploadserver.service -f"
 echo "   journalctl -u chatserver.service -f"
+echo "   journalctl -u caddy -f"
 echo ""
 echo -e "${GREEN}🔄 Reboot recommended:${NC}"
 echo "   sudo reboot"
 echo ""
-echo -e "${BLUE}📚 Full docs: https://github.com/md6410/smartHome${NC}"
+echo -e "${BLUE}📚 Repository: https://github.com/md6410/smartHome${NC}"
 echo ""
