@@ -85,10 +85,9 @@
                             {{ msg.content }}
                         {% elif msg.msg_type == 'image' %}
                             <img class="chat-image" src="{{ url_for('chat_file', filename=msg.file_path) }}" onclick="window.open(this.src)">
-
                         {% elif msg.msg_type == 'voice' %}
                             <audio controls>
-                                <source src="{{ url_for('download_file', filename=msg.file_path) }}" type="audio/webm">
+                                <source src="{{ url_for('chat_file', filename=msg.file_path) }}" type="audio/webm">
                             </audio>
                         {% elif msg.msg_type == 'location' %}
                             <div class="location-message" onclick="alert('Latitude: {{ msg.latitude }}\nLongitude: {{ msg.longitude }}')">
@@ -100,7 +99,7 @@
                                 </div>
                             </div>
                         {% else %}
-                            <a href="{{ url_for('download_file', filename=msg.file_path) }}" style="color: #027eb5;">📎 {{ msg.content }}</a>
+                            <a href="{{ url_for('chat_file', filename=msg.file_path) }}" style="color: #027eb5;">📎 {{ msg.content }}</a>
                         {% endif %}
                     </div>
                     <div class="message-footer">
@@ -222,14 +221,14 @@
             } else if (type === 'image') {
                 var img = document.createElement('img');
                 img.className = 'chat-image';
-                img.src = fileData || '/download/' + filePath;
+                img.src = fileData || '/chat_files/' + filePath;
                 img.onclick = function() { window.open(this.src); };
                 contentDiv.appendChild(img);
             } else if (type === 'voice') {
                 var audio = document.createElement('audio');
                 audio.controls = true;
                 var source = document.createElement('source');
-                source.src = fileData || '/download/' + filePath;
+                source.src = fileData || '/chat_files/' + filePath;
                 source.type = 'audio/webm';
                 audio.appendChild(source);
                 contentDiv.appendChild(audio);
@@ -250,7 +249,7 @@
                 contentDiv.appendChild(locDiv);
             } else {
                 var link = document.createElement('a');
-                link.href = '/download/' + filePath;
+                link.href = '/chat_files/' + filePath;
                 link.style.color = '#027eb5';
                 link.textContent = '📎 ' + content;
                 contentDiv.appendChild(link);
