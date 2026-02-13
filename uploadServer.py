@@ -18,10 +18,14 @@ app.config.update(
     SESSION_REFRESH_EACH_REQUEST=True
 )
 
-# FIXED: Use ONLY public folder
+# FIXED: Separate data files from public uploads
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads', 'public')
+DATA_DIR = os.path.join(BASE_DIR, 'uploads', 'data')  # NEW: metadata folder
+
+# Create folders
 os.makedirs(PUBLIC_UPLOAD_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 upload_folders = {
     'Upload Folder': PUBLIC_UPLOAD_DIR,
@@ -36,8 +40,9 @@ users = {
     'user1': hashlib.sha256(b'password1').hexdigest(),
 }
 
-download_counter_file = os.path.join(PUBLIC_UPLOAD_DIR, 'download_counts.json')
-ip_log_file = os.path.join(PUBLIC_UPLOAD_DIR, 'downloadedIP.txt')
+# FIXED: Store metadata OUTSIDE public folder
+download_counter_file = os.path.join(DATA_DIR, 'download_counts.json')
+ip_log_file = os.path.join(DATA_DIR, 'downloadedIP.txt')
 
 # Template filter for file icons
 @app.template_filter('get_file_icon')
@@ -110,10 +115,10 @@ def get_file_download_ips(filename):
 
 @app.route('/')
 def index():
-    # FIXED: List only FILES from public folder (skip directories)
+    # List only FILES from public folder (skip directories and hidden files)
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
-        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f))]
+        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
     except Exception as e:
         print(f"Error listing files: {e}")
         file_list = []
@@ -134,10 +139,10 @@ def index():
 @app.route('/files')
 def public_files():
     """Public page for downloading files only"""
-    # FIXED: List only FILES from public folder (skip directories)
+    # List only FILES from public folder (skip directories and hidden files)
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
-        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f))]
+        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
     except Exception as e:
         print(f"Error listing files: {e}")
         file_list = []
