@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Download Files</title>
+    <title>File Manager - Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
@@ -18,179 +18,1395 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 900px;
             margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
         
         .header {
-            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            margin-bottom: 40px;
+            padding: 30px;
+            text-align: center;
         }
         
         .header h1 {
-            font-size: 3em;
+            font-size: 2em;
             margin-bottom: 10px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+        .btn-public {
+            background: white !important;
+            color: #667eea !important;
+            border: 2px solid white;
+            padding: 12px 24px !important;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block !important;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         
-        .search-box {
-            margin-bottom: 30px;
+        .btn-public:hover {
+            background: rgba(255, 255, 255, 0.9) !important;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
         
-        .search-box input {
-            width: 100%;
-            padding: 15px 20px;
-            border: none;
-            border-radius: 50px;
-            font-size: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        .auth-section {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
         }
         
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            list-style: none;
+        .auth-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
         }
         
-        .file-card {
-            background: white;
+        .content {
+            padding: 30px;
+        }
+        
+        .upload-section {
+            background: #f8f9fa;
             border-radius: 15px;
             padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-            cursor: pointer;
+            margin-bottom: 20px;
         }
         
-        .file-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-        }
-        
-        .file-icon {
-            font-size: 3em;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        .file-name {
-            font-size: 1.1em;
-            font-weight: 600;
+        .upload-section h2 {
             color: #333;
-            margin-bottom: 10px;
-            word-break: break-word;
-            min-height: 50px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
         }
         
-        .file-size {
-            color: #888;
-            font-size: 0.9em;
+        .form-group {
             margin-bottom: 15px;
         }
         
-        .download-btn {
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="file"],
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select {
             width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            background: white;
+        }
+        
+        input[type="file"]:focus,
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .auth-form input {
+            width: auto;
+            min-width: 150px;
+        }
+        
+        button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px;
+            padding: 12px 30px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
         
-        .download-btn:hover {
+        button:hover {
+            transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .empty-state {
-            text-align: center;
-            color: white;
-            padding: 60px 20px;
+        button:active {
+            transform: translateY(0);
         }
         
-        .empty-state svg {
-            width: 120px;
-            height: 120px;
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-delete {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+        
+        .btn-view-ips {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .btn-logout {
+            background: #6c757d;
+            padding: 8px 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .progress {
+            margin-top: 15px;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .file-list {
+            list-style: none;
+        }
+        
+        .file-item {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .file-name {
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+        
+        .file-name a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .file-name a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-meta {
+            color: #888;
+            font-size: 0.9em;
+        }
+        
+        .locked-message {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+        }
+        
+        .locked-message svg {
+            width: 64px;
+            height: 64px;
             margin-bottom: 20px;
-            opacity: 0.7;
+            opacity: 0.5;
+        }
+
+        .temp-banner {
+            background: linear-gradient(135deg, #fff8e1, #fff3cd);
+            border-bottom: 2px solid #ffc107;
+            padding: 15px 30px;
+            text-align: center;
+        }
+
+        .temp-banner .expiry-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 2px solid #ffc107;
+            border-radius: 25px;
+            padding: 8px 20px;
+            font-weight: 600;
+            color: #e65100;
+            font-size: 0.95em;
+        }
+
+        /* Temp Link Result Box */
+        .temp-link-box {
+            display: none;
+            margin-top: 20px;
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .temp-link-box .link-expiry {
+            color: #555;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+
+        .temp-link-box .link-expiry strong {
+            color: #f5576c;
+        }
+
+        .temp-link-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .temp-link-row input {
+            flex: 1;
+            background: white;
+            color: #333;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .duration-hint {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        
+        .modal-body {
+            padding: 30px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: white;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+        
+        .close:hover { opacity: 0.8; }
+        
+        .ip-list { list-style: none; }
+        
+        .ip-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+            transition: all 0.3s;
+        }
+        
+        .ip-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .ip-address {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        
+        .ip-details {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+            line-height: 1.6;
+        }
+        
+        .no-downloads {
+            text-align: center;
+            color: #888;
+            padding: 40px 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
         }
         
         @media (max-width: 600px) {
-            .header h1 {
-                font-size: 2em;
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
             }
-            
-            .file-grid {
-                grid-template-columns: 1fr;
+            .file-actions {
+                margin-top: 10px;
+                width: 100%;
+                flex-direction: column;
             }
+            .file-actions button {
+                width: 100%;
+                margin-left: 0 !important;
+            }
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+            .modal-body { padding: 20px; }
+            .temp-link-row { flex-direction: column; }
+            .temp-link-row input { width: 100%; }
         }
+		
+		/* Drop Zone */
+		.drop-zone {
+			border: 2px dashed #c0c9f7;
+			border-radius: 12px;
+			padding: 35px 20px;
+			text-align: center;
+			cursor: pointer;
+			transition: all 0.3s;
+			background: white;
+			position: relative;
+		}
+
+		.drop-zone:hover, .drop-zone.dragover {
+			border-color: #667eea;
+			background: #f0f4ff;
+			transform: scale(1.01);
+		}
+
+		.drop-zone.dragover {
+			box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+		}
+
+		.drop-zone .drop-icon {
+			font-size: 2.5em;
+			margin-bottom: 10px;
+			display: block;
+			transition: transform 0.3s;
+		}
+
+		.drop-zone.dragover .drop-icon {
+			transform: translateY(-5px);
+		}
+
+		.drop-zone .drop-text {
+			color: #555;
+			font-size: 1em;
+			margin-bottom: 12px;
+		}
+
+		.drop-zone .drop-sub {
+			color: #aaa;
+			font-size: 0.85em;
+		}
+
+		.drop-zone input[type="file"] {
+			position: absolute;
+			inset: 0;
+			opacity: 0;
+			cursor: pointer;
+			width: 100%;
+			height: 100%;
+			border: none;
+			padding: 0;
+		}
+
+		.selected-file-info {
+			display: none;
+			margin-top: 12px;
+			padding: 12px 16px;
+			background: #f0f4ff;
+			border: 1px solid #c0c9f7;
+			border-radius: 8px;
+			font-size: 0.9em;
+			color: #333;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.selected-file-info .file-icon-badge {
+			font-size: 1.5em;
+		}
+
+		.selected-file-info .file-details {
+			flex: 1;
+		}
+
+		.selected-file-info .file-clear {
+			background: none;
+			border: none;
+			color: #f5576c;
+			font-size: 1.3em;
+			cursor: pointer;
+			padding: 0 4px;
+			transform: none;
+			box-shadow: none;
+			min-width: unset;
+		}
+
+		.selected-file-info .file-clear:hover {
+			transform: scale(1.2);
+			box-shadow: none;
+		}
+		/* Multi-file queue */
+		.file-queue {
+			margin-top: 15px;
+			display: none;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.queue-item {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 10px 14px;
+			background: white;
+			border: 1px solid #e0e0e0;
+			border-radius: 8px;
+			transition: all 0.2s;
+		}
+
+		.queue-item:hover {
+			border-color: #667eea;
+			box-shadow: 0 2px 8px rgba(102,126,234,0.1);
+		}
+
+		.queue-item .q-icon { font-size: 1.4em; }
+
+		.queue-item .q-details { flex: 1; min-width: 0; }
+
+		.queue-item .q-name {
+			font-weight: 600;
+			color: #333;
+			font-size: 0.95em;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.queue-item .q-size { color: #888; font-size: 0.82em; }
+
+		.queue-item .q-status {
+			font-size: 0.82em;
+			font-weight: 600;
+			padding: 3px 10px;
+			border-radius: 20px;
+			white-space: nowrap;
+		}
+
+		.q-status.pending  { background: #e9ecef; color: #555; }
+		.q-status.uploading{ background: #fff3cd; color: #856404; }
+		.q-status.done     { background: #d4edda; color: #155724; }
+		.q-status.error    { background: #f8d7da; color: #721c24; }
+
+		.queue-item .q-remove {
+			background: none;
+			border: none;
+			color: #ccc;
+			font-size: 1.1em;
+			cursor: pointer;
+			padding: 2px 6px;
+			border-radius: 4px;
+			transform: none;
+			box-shadow: none;
+			min-width: unset;
+			transition: color 0.2s;
+		}
+
+		.queue-item .q-remove:hover {
+			color: #f5576c;
+			transform: none;
+			box-shadow: none;
+		}
+
+		.queue-item .q-progress {
+			width: 100%;
+			height: 4px;
+			background: #e0e0e0;
+			border-radius: 2px;
+			margin-top: 5px;
+			overflow: hidden;
+			display: none;
+		}
+
+		.queue-item .q-progress-bar {
+			height: 100%;
+			background: linear-gradient(90deg, #667eea, #764ba2);
+			width: 0%;
+			transition: width 0.3s;
+		}
+
+		.queue-summary {
+			display: none;
+			margin-top: 10px;
+			padding: 10px 14px;
+			background: #f0f4ff;
+			border-radius: 8px;
+			font-size: 0.9em;
+			color: #555;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		/* Token limits badge */
+		.limits-bar {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+			margin-bottom: 15px;
+		}
+
+		.limit-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 14px;
+			border-radius: 20px;
+			font-size: 0.85em;
+			font-weight: 600;
+			background: white;
+			border: 2px solid #ffc107;
+			color: #e65100;
+		}
+
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📥 Downloads</h1>
-            <p>Click any file to download</p>
-        </div>
-        
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 Search files..." onkeyup="filterFiles()">
-        </div>
-        
-        {% if file_list %}
-        <ul class="file-grid" id="fileGrid">
-            {% for file in file_list %}
-            <li class="file-card" onclick="window.open('/uploads/{{ file.name }}', '_blank')">
-                <div class="file-icon">{{ file.name | get_file_icon }}</div>
-                <div class="file-name">{{ file.name }}</div>
-                <div class="file-size">{{ file.size }}</div>
-                <button class="download-btn" onclick="event.stopPropagation(); window.location.href='/uploads/{{ file.name }}'">
-                    ⬇️ Download
-                </button>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <div class="empty-state">
-            <svg fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z" clip-rule="evenodd"/>
-                <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z"/>
-            </svg>
-            <h2>No files available</h2>
-            <p>Check back later for new files</p>
+
+        <!-- ⏰ Expired Link Banner -->
+        {% if link_expired %}
+        <div style="background: linear-gradient(135deg, #f5576c, #f093fb); color:white; padding:18px 30px; text-align:center; font-weight:600; font-size:1.05em;">
+            ⏰ This temporary link has expired. Please request a new one from the admin.
         </div>
         {% endif %}
+
+        <!-- Header -->
+        <div class="header">
+            <h1>🗂️ File Manager</h1>
+            <p>{% if is_temp %}Temporary Upload Access{% else %}Admin Dashboard{% endif %}</p>
+            <div style="margin-top: 20px;">
+                <a href="/files" target="_blank" class="btn-public">
+                    👁️ View Public Download Page
+                </a>
+            </div>
+        </div>
+
+        <!-- Auth / Status Bar -->
+        {% if is_temp %}
+        <div class="temp-banner">
+            <div class="expiry-badge">
+                🔑 Temporary Access &nbsp;|&nbsp; ⏰ Expires: <span>{{ temp_expiry }}</span>
+            </div>
+        </div>
+        {% elif is_authenticated %}
+        <div class="auth-section">
+            <div style="text-align: center;">
+                <span style="color: #28a745; font-weight: 600;">✓ Logged in as: <strong>{{ username }}</strong></span>
+                <button class="btn-logout" onclick="location.href='/logout'">Logout</button>
+            </div>
+        </div>
+        {% else %}
+        <div class="auth-section">
+            <div class="auth-form">
+                <input type="text" id="loginUsername" placeholder="Username" autocomplete="username">
+                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+                <button onclick="login()">Login</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="content">
+            {% if is_authenticated or is_temp %}
+
+           <!-- 📤 Upload File -->
+			<div class="upload-section" style="border-left: 5px solid #667eea;">
+				<h2 style="display:flex; align-items:center; gap:10px;">
+					📤 Upload File
+					<span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Drag & drop • Multi-file</span>
+				</h2>
+
+				{% if is_temp and token_data %}
+				<div class="limits-bar">
+					{% if token_data.max_files > 0 %}
+					<span class="limit-badge">📁 Files: {{ token_data.uploaded_files }} / {{ token_data.max_files }}</span>
+					{% endif %}
+					{% if token_data.max_size_mb > 0 %}
+					<span class="limit-badge">💾 Size used: {{ "%.1f"|format(token_data.uploaded_bytes / 1048576) }} / {{ token_data.max_size_mb }} MB</span>
+					{% endif %}
+					{% if token_data.max_files == 0 and token_data.max_size_mb == 0 %}
+					<span class="limit-badge" style="border-color:#28a745; color:#155724;">✅ No upload limits</span>
+					{% endif %}
+				</div>
+				{% endif %}
+
+				<!-- Drop Zone -->
+				<div class="drop-zone" id="dropZone">
+					<span class="drop-icon" id="dropIcon">☁️</span>
+					<div class="drop-text" id="dropText"><strong>Click to choose</strong> or drag & drop files here</div>
+					<div class="drop-sub" id="dropSub">Multiple files supported</div>
+					<input type="file" name="file" id="file" multiple onchange="onFilesSelected(this.files)">
+				</div>
+
+				<!-- File Queue -->
+				<div class="file-queue" id="fileQueue"></div>
+
+				<!-- Queue Summary -->
+				<div class="queue-summary" id="queueSummary">
+					<span id="queueSummaryText"></span>
+					<button onclick="clearAllFiles()"
+						style="background:none; border:1px solid #f5576c; color:#f5576c;
+							   padding:4px 12px; font-size:0.85em; font-weight:600; border-radius:6px;
+							   transform:none; box-shadow:none; cursor:pointer;">
+						🗑️ Clear All
+					</button>
+				</div>
+
+				<div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:15px;">
+					<div class="form-group" style="margin-bottom:0;">
+						<label for="destination">📁 Destination</label>
+						<select name="destination" id="destination">
+							<option value="Upload Folder">Upload Folder</option>
+							<option value="DLNA Music">DLNA Music</option>
+							<option value="DLNA Movie">DLNA Movie</option>
+							<option value="DLNA Pictures">DLNA Pictures</option>
+						</select>
+					</div>
+					<div style="display:flex; align-items:flex-end;">
+						<button type="button" id="uploadBtn" onclick="uploadAllFiles()" style="width:100%;">
+							🚀 Upload All
+						</button>
+					</div>
+				</div>
+			</div>
+
+
+            <!-- 📋 Paste Text -->
+            <div class="upload-section" style="border-left: 5px solid #4facfe;">
+                <h2 style="display:flex; align-items:center; gap:10px;">
+                    📋 Paste Text
+                    <span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Saves as .txt file</span>
+                </h2>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="textFilename">📝 Filename <span style="color:#aaa; font-weight:400;">(optional)</span></label>
+                        <input type="text" id="textFilename" placeholder="e.g. my-notes  →  saves as my-notes.txt">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="textDestination">📁 Destination</label>
+                        <select id="textDestination">
+                            <option value="Upload Folder">Upload Folder</option>
+                            <option value="DLNA Music">DLNA Music</option>
+                            <option value="DLNA Movie">DLNA Movie</option>
+                            <option value="DLNA Pictures">DLNA Pictures</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="pasteArea">📄 Text Content</label>
+                    <textarea id="pasteArea" rows="8" placeholder="Paste your text here..."
+                        style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px;
+                               font-family:monospace; font-size:14px; resize:vertical;
+                               transition:border-color 0.3s; line-height:1.6;"
+                        onfocus="this.style.borderColor='#667eea'"
+                        onblur="this.style.borderColor='#e0e0e0'"></textarea>
+                </div>
+                <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                    <button id="uploadTextBtn" onclick="uploadText()"
+                        style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); min-width:180px;">
+                        💾 Save as Text File
+                    </button>
+                    <div id="textUploadStatus" style="display:none; padding:10px 18px; border-radius:8px; font-weight:500; flex:1;"></div>
+                </div>
+            </div>
+
+            <!-- 🔗 Generate Temp Link — Admin only -->
+            {% if is_authenticated %}
+			<div class="upload-section" style="border-left: 5px solid #f093fb;">
+				<h2 style="display:flex; align-items:center; gap:10px;">
+					🔗 Generate Temporary Upload Link
+					<span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Share with guests</span>
+				</h2>
+
+				<div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:12px;">
+					<div class="form-group" style="margin-bottom:0;">
+						<label for="tempDuration">⏱️ Duration</label>
+						<input type="number" id="tempDuration" value="1" min="1" oninput="updateDurationHint()">
+					</div>
+					<div class="form-group" style="margin-bottom:0;">
+						<label for="tempUnit">📐 Unit</label>
+						<select id="tempUnit" onchange="updateDurationHint()">
+							<option value="1">Minutes</option>
+							<option value="60" selected>Hours</option>
+							<option value="1440">Days</option>
+						</select>
+					</div>
+				</div>
+
+				<div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:12px;">
+					<div class="form-group" style="margin-bottom:0;">
+						<label for="maxFiles">📁 Max Files <span style="color:#aaa; font-weight:400;">(0 = unlimited)</span></label>
+						<input type="number" id="maxFiles" value="0" min="0" placeholder="0 = unlimited" oninput="updateDurationHint()">					</div>
+					<div class="form-group" style="margin-bottom:0;">
+						<label for="maxSizeMb">💾 Max Total Size MB <span style="color:#aaa; font-weight:400;">(0 = unlimited)</span></label>
+						<input type="number" id="maxSizeMb" value="0" min="0" placeholder="0 = unlimited" oninput="updateDurationHint()">					</div>
+				</div>
+
+				<div class="duration-hint">
+					🕐 Link will expire in <strong id="hintText">1 hour</strong>
+					<span id="limitsHint"></span>
+				</div>
+
+				<button onclick="generateTempLink()"
+					style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); min-width:200px;">
+					🔗 Generate Link
+				</button>
+
+				<div class="temp-link-box" id="tempLinkResult">
+					<div class="link-expiry">
+						⏰ Expires at: <strong id="tempLinkExpiry"></strong>
+					</div>
+					<div id="tempLinkLimits" style="font-size:0.85em; color:#555; margin-bottom:12px;"></div>
+					<div class="temp-link-row">
+						<input type="text" id="tempLinkUrl" readonly>
+						<button onclick="copyTempLink()"
+							style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+								   padding:12px 20px; white-space:nowrap; min-width:110px;" id="copyBtn">
+							📋 Copy
+						</button>
+					</div>
+				</div>
+			</div>
+			{% endif %}
+
+
+            <!-- 📁 File List -->
+            <h2 style="margin-bottom:15px;">📁 Uploaded Files</h2>
+            {% if file_list %}
+            <ul class="file-list">
+                {% for file in file_list %}
+                <li class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">
+                            <a href="/uploads/{{ file.name }}" target="_blank">📎 {{ file.name }}</a>
+                        </div>
+                        <div class="file-meta">
+                            Size: {{ file.size }} | Downloads: {{ file.downloads }}
+                        </div>
+                    </div>
+                    {% if is_authenticated %}
+                    <div class="file-actions">
+                        <button class="btn-view-ips" onclick="viewIPs('{{ file.name }}')">👁️ View IPs</button>
+                        <button class="btn-delete" onclick="deleteFile('{{ file.name }}')">🗑️ Delete</button>
+                    </div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="no-downloads">
+                <p>No files uploaded yet</p>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <!-- Not logged in -->
+            <div class="locked-message">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                </svg>
+                <h3>Please login to manage files</h3>
+            </div>
+            {% endif %}
+        </div>
     </div>
-    
+
+    <!-- IP Modal -->
+    <div id="ipModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>📊 Download History</h2>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <p class="loading">Loading</p>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function filterFiles() {
-            var input = document.getElementById('searchInput');
-            var filter = input.value.toUpperCase();
-            var grid = document.getElementById('fileGrid');
-            
-            if (!grid) return;
-            
-            var cards = grid.getElementsByClassName('file-card');
-            
-            for (var i = 0; i < cards.length; i++) {
-                var fileName = cards[i].getElementsByClassName('file-name')[0];
-                var txtValue = fileName.textContent || fileName.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    cards[i].style.display = "";
-                } else {
-                    cards[i].style.display = "none";
-                }
+	 // Temp token limits injected from server (0 = unlimited)
+	const TOKEN_MAX_FILES   = {{ token_data.max_files   if token_data else 0 }};
+	const TOKEN_MAX_SIZE_MB = {{ token_data.max_size_mb  if token_data else 0 }};
+	const TOKEN_USED_FILES  = {{ token_data.uploaded_files  if token_data else 0 }};
+	const TOKEN_USED_BYTES  = {{ token_data.uploaded_bytes  if token_data else 0 }};
+	const IS_TEMP_USER      = {{ 'true' if is_temp else 'false' }};
+    // ── Auth ──────────────────────────────────────────────
+    function login() {
+        var username = document.getElementById('loginUsername').value;
+        var password = document.getElementById('loginPassword').value;
+        if (!username || !password) { alert('Please enter both username and password'); return; }
+        var formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        fetch('/login', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => { if (data.success) location.reload(); else alert(data.message || 'Incorrect username or password'); })
+            .catch(err => alert('Login failed: ' + err));
+    }
+
+    // ── File Queue State ──────────────────────────────────
+    let fileQueue = []; // { file, id, status: 'pending'|'uploading'|'done'|'error', message }
+    let nextId = 0;
+
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const icons = {
+            pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊',
+            zip:'🗜️', rar:'🗜️', '7z':'🗜️',
+            mp3:'🎵', wav:'🎵', flac:'🎵',
+            mp4:'🎬', avi:'🎬', mkv:'🎬',
+            jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️',
+            txt:'📃', py:'🐍', js:'📜', html:'🌐'
+        };
+        return icons[ext] || '📦';
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+        if (bytes < 1073741824) return (bytes/1048576).toFixed(1) + ' MB';
+        return (bytes/1073741824).toFixed(2) + ' GB';
+    }
+
+    function onFilesSelected(files) {
+        for (const file of files) {
+            // Avoid duplicates by name+size
+            const exists = fileQueue.some(q => q.file.name === file.name && q.file.size === file.size);
+            if (!exists) {
+                fileQueue.push({ file, id: nextId++, status: 'pending', message: '' });
             }
         }
-    </script>
+        // Reset input so same file can be re-added after removal
+        document.getElementById('file').value = '';
+        renderQueue();
+    }
+
+    function renderQueue() {
+        const container = document.getElementById('fileQueue');
+        const summary   = document.getElementById('queueSummary');
+        const summaryTxt = document.getElementById('queueSummaryText');
+
+        if (fileQueue.length === 0) {
+            container.style.display = 'none';
+            summary.style.display   = 'none';
+            resetDropZone();
+            return;
+        }
+
+        container.style.display = 'flex';
+        summary.style.display   = 'flex';
+
+        const totalSize = fileQueue.reduce((a, q) => a + q.file.size, 0);
+        const done      = fileQueue.filter(q => q.status === 'done').length;
+        summaryTxt.textContent = `${fileQueue.length} file${fileQueue.length > 1 ? 's' : ''} selected  •  ${formatSize(totalSize)}  •  ${done} uploaded`;
+
+        // Update drop zone
+        document.getElementById('dropIcon').textContent = '📂';
+        document.getElementById('dropText').innerHTML = `<strong>${fileQueue.length} file${fileQueue.length > 1 ? 's' : ''} selected</strong>`;
+        document.getElementById('dropSub').textContent = formatSize(totalSize) + ' total — drop more to add';
+
+        container.innerHTML = fileQueue.map(q => `
+            <div class="queue-item" id="qi-${q.id}">
+                <span class="q-icon">${getFileIcon(q.file.name)}</span>
+                <div class="q-details">
+                    <div class="q-name" title="${q.file.name}">${q.file.name}</div>
+                    <div class="q-size">${formatSize(q.file.size)}${q.message ? ' — ' + q.message : ''}</div>
+                    <div class="q-progress" id="qp-${q.id}">
+                        <div class="q-progress-bar" id="qpb-${q.id}"></div>
+                    </div>
+                </div>
+                <span class="q-status ${q.status}" id="qs-${q.id}">
+					${getStatusLabel(q.status)}                </span>
+                ${q.status !== 'uploading' && q.status !== 'done' ?
+                    `<button class="q-remove" onclick="removeFromQueue(${q.id})" title="Remove">✕</button>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function removeFromQueue(id) {
+        fileQueue = fileQueue.filter(q => q.id !== id);
+        renderQueue();
+    }
+
+    function clearAllFiles() {
+        fileQueue = fileQueue.filter(q => q.status === 'uploading'); // keep uploading ones
+        renderQueue();
+    }
+
+    // ── Upload All ────────────────────────────────────────
+    async function uploadAllFiles() {
+    const pending = fileQueue.filter(q => q.status === 'pending');
+    if (pending.length === 0) {
+        if (fileQueue.length === 0) { alert('Please select files first.'); }
+        else { alert('All files already uploaded.'); }
+        return;
+    }
+
+    // ── Pre-upload limit checks for temp users ────────────
+    if (IS_TEMP_USER) {
+        const destination = document.getElementById('destination').value;
+
+        // File count check
+        if (TOKEN_MAX_FILES > 0) {
+            const wouldUpload = TOKEN_USED_FILES + pending.length;
+            if (wouldUpload > TOKEN_MAX_FILES) {
+                const remaining = TOKEN_MAX_FILES - TOKEN_USED_FILES;
+                if (remaining <= 0) {
+                    alert(`⛔ Upload limit reached. You have already used all ${TOKEN_MAX_FILES} allowed file${TOKEN_MAX_FILES > 1 ? 's' : ''}.`);
+                    return;
+                }
+                const proceed = confirm(`⚠️ You can only upload ${remaining} more file${remaining > 1 ? 's' : ''} (limit: ${TOKEN_MAX_FILES}). Only the first ${remaining} file${remaining > 1 ? 's' : ''} will be uploaded. Continue?`);
+                if (!proceed) return;
+                // Trim queue to allowed count
+                pending.splice(remaining);
+            }
+        }
+
+        // Total size check
+        if (TOKEN_MAX_SIZE_MB > 0) {
+            const maxBytes      = TOKEN_MAX_SIZE_MB * 1024 * 1024;
+            const remainBytes   = maxBytes - TOKEN_USED_BYTES;
+            const pendingBytes  = pending.reduce((a, q) => a + q.file.size, 0);
+
+            if (remainBytes <= 0) {
+                alert(`⛔ Size limit reached. You have used all ${TOKEN_MAX_SIZE_MB} MB allowed.`);
+                return;
+            }
+
+            if (pendingBytes > remainBytes) {
+                const remainMB = (remainBytes / 1024 / 1024).toFixed(1);
+                // Find which files fit
+                let runningBytes = 0;
+                const fittingFiles = [];
+                for (const item of pending) {
+                    if (runningBytes + item.file.size <= remainBytes) {
+                        fittingFiles.push(item);
+                        runningBytes += item.file.size;
+                    }
+                }
+                if (fittingFiles.length === 0) {
+                    alert(`⛔ Not enough space. Your files need ${(pendingBytes/1024/1024).toFixed(1)} MB but only ${remainMB} MB remaining.`);
+                    return;
+                }
+                const proceed = confirm(`⚠️ Not enough space for all files. Only ${fittingFiles.length} file${fittingFiles.length > 1 ? 's' : ''} (${(runningBytes/1024/1024).toFixed(1)} MB) fit within your ${remainMB} MB remaining limit. Continue with those?`);
+                if (!proceed) return;
+                // Mark oversized files as skipped
+                pending.forEach(item => {
+                    if (!fittingFiles.includes(item)) {
+                        item.status = 'error';
+                        item.message = 'Exceeds size limit';
+                    }
+                });
+                renderQueue();
+            }
+        }
+    }
+
+    // ── Proceed with upload ───────────────────────────────
+    const toUpload  = pending.filter(q => q.status === 'pending');
+    const destination = document.getElementById('destination').value;
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true;
+    btn.textContent = `⏳ Uploading 0/${toUpload.length}…`;
+
+    let completed = 0;
+    for (const item of toUpload) {
+        item.status = 'uploading';
+        renderQueue();
+        try {
+            await uploadSingleFile(item, destination);
+            item.status = 'done';
+        } catch (err) {
+            item.status = 'error';
+            item.message = err.message || 'Failed';
+        }
+        completed++;
+        btn.textContent = `⏳ Uploading ${completed}/${toUpload.length}…`;
+        renderQueue();
+    }
+
+    btn.disabled = false;
+    btn.textContent = '🚀 Upload All';
+    renderQueue();
+
+    const failed = fileQueue.filter(q => q.status === 'error').length;
+    if (failed === 0) {
+        setTimeout(() => location.reload(), 1200);
+    }
+	}
+
+
+    function uploadSingleFile(item, destination) {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', item.file);
+            formData.append('destination', destination);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+            xhr.withCredentials = true;
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const pct = (e.loaded / e.total) * 100;
+                    const bar = document.getElementById('qpb-' + item.id);
+                    const prog = document.getElementById('qp-' + item.id);
+                    if (prog) prog.style.display = 'block';
+                    if (bar) bar.style.width = pct + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) resolve();
+                else {
+                    let msg = xhr.responseText;
+                    try { msg = JSON.parse(xhr.responseText).message || msg; } catch(e) {}
+                    reject(new Error(msg));
+                }
+            };
+
+            xhr.onerror = () => reject(new Error('Network error'));
+            xhr.send(formData);
+        });
+    }
+
+    // ── Drop Zone ─────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropZone = document.getElementById('dropZone');
+        if (!dropZone) return;
+
+        dropZone.addEventListener('click', function(e) {
+            if (e.target !== document.getElementById('file')) {
+                document.getElementById('file').click();
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault(); e.stopPropagation();
+                dropZone.classList.add('dragover');
+                document.getElementById('dropIcon').textContent = '📂';
+                document.getElementById('dropText').innerHTML = '<strong>Drop files here!</strong>';
+                document.getElementById('dropSub').textContent = 'Release to add to queue';
+            });
+        });
+
+        ['dragleave', 'dragend'].forEach(evt => {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault(); e.stopPropagation();
+                dropZone.classList.remove('dragover');
+                if (fileQueue.length === 0) resetDropZone();
+                else renderQueue();
+            });
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                onFilesSelected(e.dataTransfer.files);
+            }
+        });
+
+        // Init duration hint
+        updateDurationHint();
+
+        // Enter on login
+        ['loginUsername', 'loginPassword'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('keypress', function(e) { if (e.key === 'Enter') login(); });
+        });
+    });
+
+    function resetDropZone() {
+        document.getElementById('dropIcon').textContent = '☁️';
+        document.getElementById('dropText').innerHTML = '<strong>Click to choose</strong> or drag & drop files here';
+        document.getElementById('dropSub').textContent = 'Multiple files supported';
+    }
+
+    // ── Text Upload ───────────────────────────────────────
+    async function uploadText() {
+        const text        = document.getElementById('pasteArea').value.trim();
+        const filename    = document.getElementById('textFilename').value.trim();
+        const destination = document.getElementById('textDestination').value;
+        const statusDiv   = document.getElementById('textUploadStatus');
+        const btn         = document.getElementById('uploadTextBtn');
+
+        if (!text) {
+            statusDiv.style.cssText = 'display:block; padding:10px 18px; border-radius:8px; font-weight:500; flex:1; background:#fdecea; color:#c62828; border:1px solid #f5c6cb;';
+            statusDiv.textContent = '⚠️ Please paste some text first.';
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = '⏳ Saving...';
+        try {
+            const response = await fetch('/upload-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, filename, destination })
+            });
+            const result = await response.json();
+            statusDiv.style.display = 'block';
+            if (result.success) {
+                statusDiv.style.cssText = 'display:block; padding:10px 18px; border-radius:8px; font-weight:500; flex:1; background:#e8f5e9; color:#2e7d32; border:1px solid #c3e6cb;';
+                statusDiv.textContent = '✅ ' + result.message;
+                document.getElementById('pasteArea').value = '';
+                document.getElementById('textFilename').value = '';
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                statusDiv.style.cssText = 'display:block; padding:10px 18px; border-radius:8px; font-weight:500; flex:1; background:#fdecea; color:#c62828; border:1px solid #f5c6cb;';
+                statusDiv.textContent = '❌ ' + result.message;
+            }
+        } catch (err) {
+            statusDiv.style.cssText = 'display:block; padding:10px 18px; border-radius:8px; font-weight:500; flex:1; background:#fdecea; color:#c62828;';
+            statusDiv.textContent = '❌ Network error: ' + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 Save as Text File';
+        }
+    }
+
+    // ── Temp Link ─────────────────────────────────────────
+    function updateDurationHint() {
+        const dur = document.getElementById('tempDuration');
+        const unit = document.getElementById('tempUnit');
+        if (!dur || !unit) return;
+        const total = (parseInt(dur.value) || 1) * parseInt(unit.value);
+        let text = '';
+        if (total < 60) text = total + ' minute' + (total !== 1 ? 's' : '');
+        else if (total < 1440) { const h = total/60; text = (Number.isInteger(h)?h:h.toFixed(1)) + ' hour' + (h!==1?'s':''); }
+        else { const d = total/1440; text = (Number.isInteger(d)?d:d.toFixed(1)) + ' day' + (d!==1?'s':''); }
+        document.getElementById('hintText').textContent = text;
+
+        // Limits hint
+        const mf = parseInt(document.getElementById('maxFiles').value) || 0;
+        const ms = parseInt(document.getElementById('maxSizeMb').value) || 0;
+        const limitsEl = document.getElementById('limitsHint');
+        if (limitsEl) {
+            let parts = [];
+            if (mf > 0) parts.push(`max ${mf} file${mf>1?'s':''}`);
+            if (ms > 0) parts.push(`max ${ms} MB`);
+            limitsEl.textContent = parts.length ? '  •  ' + parts.join(', ') : '  •  no limits';
+        }
+    }
+
+    async function generateTempLink() {
+        const amount   = parseInt(document.getElementById('tempDuration').value) || 1;
+        const unit     = parseInt(document.getElementById('tempUnit').value);
+        const maxFiles = parseInt(document.getElementById('maxFiles').value) || 0;
+        const maxSize  = parseInt(document.getElementById('maxSizeMb').value) || 0;
+        try {
+            const response = await fetch('/generate-temp-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ minutes: amount * unit, max_files: maxFiles, max_size_mb: maxSize })
+            });
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('tempLinkUrl').value = data.link;
+                document.getElementById('tempLinkExpiry').textContent = data.expiry;
+                let limitsText = [];
+                if (maxFiles > 0) limitsText.push(`📁 Max ${maxFiles} file${maxFiles>1?'s':''}`);
+                if (maxSize > 0)  limitsText.push(`💾 Max ${maxSize} MB total`);
+                document.getElementById('tempLinkLimits').textContent = limitsText.length
+                    ? limitsText.join('  •  ')
+                    : '✅ No upload limits set';
+                document.getElementById('tempLinkResult').style.display = 'block';
+            } else {
+                alert('Failed: ' + data.message);
+            }
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    }
+
+    function copyTempLink() {
+        const input = document.getElementById('tempLinkUrl');
+        const btn   = document.getElementById('copyBtn');
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, 99999);
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch(e) {}
+        if (copied) {
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => btn.textContent = '📋 Copy', 2000);
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(input.value).then(() => {
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => btn.textContent = '📋 Copy', 2000);
+            }).catch(() => { btn.textContent = '⚠️ Copy manually'; setTimeout(() => btn.textContent = '📋 Copy', 3000); });
+        }
+    }
+
+    // ── File Management ───────────────────────────────────
+    function deleteFile(filename) {
+        if (!confirm('Are you sure you want to delete "' + filename + '"?')) return;
+        fetch('/delete/' + encodeURIComponent(filename), { method: 'POST', body: new FormData() })
+            .then(r => r.text()).then(data => { alert(data); location.reload(); })
+            .catch(err => alert('Delete failed: ' + err));
+    }
+
+    function viewIPs(filename) {
+        document.getElementById('ipModal').style.display = 'block';
+        document.getElementById('modalBody').innerHTML = '<p class="loading">Loading</p>';
+        fetch('/file-ips/' + encodeURIComponent(filename))
+            .then(r => { if (!r.ok) throw new Error('Status: ' + r.status); return r.json(); })
+            .then(data => { if (data.success) displayIPs(data); else document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + (data.message||'Failed') + '</div>'; })
+            .catch(err => { document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + err.message + '</div>'; });
+    }
+
+    function displayIPs(data) {
+        var html = '<h3 style="margin-bottom:15px;color:#333;">File: <strong>' + data.filename + '</strong></h3>';
+        html += '<p style="margin-bottom:20px;color:#666;font-size:1.1em;">📥 Total Downloads: <strong>' + data.total + '</strong></p>';
+        if (data.downloads.length > 0) {
+            html += '<ul class="ip-list">';
+            data.downloads.forEach(function(d) {
+                html += '<li class="ip-item"><div class="ip-address">🌐 ' + d.ip + '</div>';
+                html += '<div class="ip-details">📅 <strong>Time:</strong> ' + d.timestamp + '<br>💻 <strong>Device:</strong> ' + d.user_agent + '</div></li>';
+            });
+            html += '</ul>';
+        } else {
+            html += '<div class="no-downloads"><p style="font-size:1.2em;">📭 No downloads yet</p></div>';
+        }
+        document.getElementById('modalBody').innerHTML = html;
+    }
+
+	function getStatusLabel(status) {
+		if (status === 'pending')   return 'Pending';
+		if (status === 'uploading') return 'Uploading…';
+		if (status === 'done')      return '✅ Done';
+		if (status === 'error')     return '❌ Failed';
+		return status;
+	}
+
+    function closeModal() { document.getElementById('ipModal').style.display = 'none'; }
+    window.onclick = function(e) { if (e.target == document.getElementById('ipModal')) closeModal(); };
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+</script>
+
+   
 </body>
 </html>
