@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 import os
 import hashlib
 import json
+import secrets
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -16,14 +17,12 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
     SESSION_REFRESH_EACH_REQUEST=True
-)
+)  # ← was missing closing )
 
-# FIXED: Separate data files from public uploads
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads', 'public')
-DATA_DIR = os.path.join(BASE_DIR, 'uploads', 'data')  # NEW: metadata folder
+DATA_DIR = os.path.join(BASE_DIR, 'uploads', 'data')
 
-# Create folders
 os.makedirs(PUBLIC_UPLOAD_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -32,19 +31,20 @@ upload_folders = {
     'DLNA Music': '/media/HDD/Music',
     'DLNA Movie': '/media/HDD/Movies',
     'DLNA Pictures': '/media/HDD/Pictures'
-}
+}  # ← was missing closing }
 
-# Users database (username: password_hash)
 users = {
     'admin': hashlib.sha256(b'13691113').hexdigest(),
     'user1': hashlib.sha256(b'password1').hexdigest(),
-}
+}  # ← was missing closing }
 
-# FIXED: Store metadata OUTSIDE public folder
+# ✅ FIXED: just an empty dict, NOT a structure description
+TEMP_TOKENS = {}
+
 download_counter_file = os.path.join(DATA_DIR, 'download_counts.json')
 ip_log_file = os.path.join(DATA_DIR, 'downloadedIP.txt')
 
-# Template filter for file icons
+
 @app.template_filter('get_file_icon')
 def get_file_icon(filename):
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
@@ -62,6 +62,7 @@ def get_file_icon(filename):
     }
     return icons.get(ext, '📦')
 
+
 def get_download_counts():
     if os.path.exists(download_counter_file):
         try:
@@ -71,15 +72,50 @@ def get_download_counts():
             return {}
     return {}
 
+
 def save_download_counts(counts):
     with open(download_counter_file, 'w') as f:
         json.dump(counts, f)
+
 
 def verify_credentials(username, password):
     if username in users:
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         return users[username] == password_hash
     return False
+
+
+def create_temp_token(minutes, max_files=0, max_size_mb=0):
+    token = secrets.token_urlsafe(32)
+    TEMP_TOKENS[token] = {
+        'expiry': datetime.now() + timedelta(minutes=minutes),
+        'max_files': max_files,
+        'max_size_mb': max_size_mb,
+        'uploaded_files': 0,
+        'uploaded_bytes': 0
+    }  # ← was missing closing }
+    return token
+
+
+def validate_temp_token(token):
+    if token in TEMP_TOKENS:
+        if datetime.now() < TEMP_TOKENS[token]['expiry']:
+            return True
+        else:
+            del TEMP_TOKENS[token]
+    return False
+
+
+def get_token_data(token):
+    return TEMP_TOKENS.get(token)
+
+
+def cleanup_expired_tokens():
+    # ✅ FIXED: use data['expiry'] not exp (which is the whole dict)
+    expired = [t for t, data in TEMP_TOKENS.items() if datetime.now() >= data['expiry']]
+    for t in expired:
+        del TEMP_TOKENS[t]
+
 
 def get_file_size(filename):
     try:
@@ -92,8 +128,8 @@ def get_file_size(filename):
     except:
         return "Unknown"
 
+
 def get_file_download_ips(filename):
-    """Get list of IPs that downloaded a specific file"""
     downloads = []
     if os.path.exists(ip_log_file):
         try:
@@ -113,53 +149,86 @@ def get_file_download_ips(filename):
             print(f"Error reading IP log: {e}")
     return downloads
 
+
 @app.route('/')
 def index():
-    # List only FILES from public folder (skip directories and hidden files)
+    cleanup_expired_tokens()
+
+    token = request.args.get('token')
+    if token:
+        if validate_temp_token(token):
+            session['temp_access'] = True
+            session['temp_token'] = token
+            # ✅ FIXED: was TEMP_TOKENS[token].strftime(...) — token value is a dict now
+            session['temp_expiry'] = TEMP_TOKENS[token]['expiry'].strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            session.pop('temp_access', None)
+            session.pop('temp_token', None)
+            session.pop('temp_expiry', None)
+            return render_template('upload.html',
+                                   is_authenticated=False,
+                                   is_temp=False,
+                                   username='',
+                                   file_list=[],
+                                   link_expired=True,
+                                   temp_expiry='',
+                                   token_data=None)
+        return redirect(url_for('index'))
+
+    if session.get('temp_access') and session.get('temp_token'):
+        if not validate_temp_token(session['temp_token']):
+            session.pop('temp_access', None)
+            session.pop('temp_token', None)
+            session.pop('temp_expiry', None)
+            return render_template('upload.html',
+                                   is_authenticated=False,
+                                   is_temp=False,
+                                   username='',
+                                   file_list=[],
+                                   link_expired=True,
+                                   temp_expiry='',
+                                   token_data=None)
+
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
         file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
-    except Exception as e:
-        print(f"Error listing files: {e}")
+    except:
         file_list = []
-    
+
     download_counts = get_download_counts()
-    file_info = []
-    for filename in file_list:
-        file_info.append({
-            'name': filename,
-            'size': get_file_size(filename),
-            'downloads': download_counts.get(filename, 0)
-        })
-    return render_template('upload.html', 
-                         file_list=file_info, 
-                         is_authenticated=session.get('authenticated', False),
-                         username=session.get('username', ''))
+    file_info = [{'name': f, 'size': get_file_size(f), 'downloads': download_counts.get(f, 0)} for f in file_list]
+
+    token_data = None
+    if session.get('temp_access') and session.get('temp_token'):
+        token_data = get_token_data(session['temp_token'])
+
+    return render_template('upload.html',
+                           file_list=file_info,
+                           is_authenticated=session.get('authenticated', False),
+                           is_temp=session.get('temp_access', False),
+                           temp_expiry=session.get('temp_expiry', ''),
+                           username=session.get('username', ''),
+                           link_expired=False,
+                           token_data=token_data)
+
 
 @app.route('/files')
 def public_files():
-    """Public page for downloading files only"""
-    # List only FILES from public folder (skip directories and hidden files)
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
         file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
     except Exception as e:
         print(f"Error listing files: {e}")
         file_list = []
-    
-    file_info = []
-    for filename in file_list:
-        file_info.append({
-            'name': filename,
-            'size': get_file_size(filename)
-        })
+
+    file_info = [{'name': f, 'size': get_file_size(f)} for f in file_list]
     return render_template('public.html', file_list=file_info)
+
 
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form.get('username', '')
     password = request.form.get('password', '')
-    
     if verify_credentials(username, password):
         session.permanent = True
         session['authenticated'] = True
@@ -167,101 +236,154 @@ def login():
         return jsonify({'success': True})
     return jsonify({'success': False, 'message': 'Invalid username or password'}), 401
 
+
 @app.route('/logout')
 def logout():
     session.pop('authenticated', None)
     session.pop('username', None)
     return redirect(url_for('index'))
 
+
+@app.route('/generate-temp-link', methods=['POST'])
+def generate_temp_link():
+    if not session.get('authenticated', False):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    minutes     = max(1, min(int(data.get('minutes', 60)), 10080))
+    max_files   = max(0, int(data.get('max_files', 0)))
+    max_size_mb = max(0, int(data.get('max_size_mb', 0)))
+
+    token  = create_temp_token(minutes, max_files, max_size_mb)
+    expiry = TEMP_TOKENS[token]['expiry'].strftime('%Y-%m-%d %H:%M:%S')
+    link   = request.host_url.rstrip('/') + f'/?token={token}'
+
+    return jsonify({'success': True, 'link': link, 'expiry': expiry})
+
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # Check authentication
-    if not session.get('authenticated', False):
-        return "Unauthorized - Please login first", 403
-    
+    is_auth = session.get('authenticated', False)
+    is_temp = session.get('temp_access', False)
+    token   = session.get('temp_token')
+
+    if not is_auth and not is_temp:
+        return "Unauthorized", 403
+
     if 'file' not in request.files:
         return "No file part", 400
-    
+
     file = request.files['file']
     if file.filename == '':
         return "No selected file", 400
-    
-    if file:
-        filename = secure_filename(file.filename)
-        destination = request.form.get('destination', 'Upload Folder')
-        upload_folder = upload_folders.get(destination, PUBLIC_UPLOAD_DIR)
-        
-        # Create directory if it doesn't exist
-        os.makedirs(upload_folder, exist_ok=True)
-        
-        filepath = os.path.join(upload_folder, filename)
-        file.save(filepath)
-        
-        # Initialize download count for new file
-        download_counts = get_download_counts()
-        if filename not in download_counts:
-            download_counts[filename] = 0
-            save_download_counts(download_counts)
-            
-        return "File uploaded successfully"
+
+    file_data = file.read()
+    file_size = len(file_data)
+
+    if is_temp and token and token in TEMP_TOKENS:
+        td = TEMP_TOKENS[token]
+        if td['max_files'] > 0 and td['uploaded_files'] >= td['max_files']:
+            return jsonify({'success': False, 'message': f"Upload limit reached ({td['max_files']} files)"}), 403
+        if td['max_size_mb'] > 0:
+            max_bytes = td['max_size_mb'] * 1024 * 1024
+            if td['uploaded_bytes'] + file_size > max_bytes:
+                remaining = max_bytes - td['uploaded_bytes']
+                return jsonify({'success': False, 'message': f"Size limit reached. Remaining: {remaining/1024/1024:.1f} MB"}), 403
+
+    filename    = secure_filename(file.filename)
+    destination = request.form.get('destination', 'Upload Folder')
+    upload_dir  = upload_folders.get(destination, PUBLIC_UPLOAD_DIR)
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    with open(filepath, 'wb') as f:
+        f.write(file_data)
+
+    if is_temp and token and token in TEMP_TOKENS:
+        TEMP_TOKENS[token]['uploaded_files'] += 1
+        TEMP_TOKENS[token]['uploaded_bytes'] += file_size
+
+    download_counts = get_download_counts()
+    if filename not in download_counts:
+        download_counts[filename] = 0
+        save_download_counts(download_counts)
+
+    return "File uploaded successfully"
+
 
 @app.route('/uploads/<path:filename>', methods=['GET'])
 def get_file(filename):
     client_ip = request.remote_addr
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    # Log IP to file with timestamp
     with open(ip_log_file, 'a', encoding='utf-8') as f:
         f.write(f"{filename},{client_ip},{request.headers.get('User-Agent', 'Unknown')},{timestamp}\n")
-    
-    # Update download count
     download_counts = get_download_counts()
-    if filename in download_counts:
-        download_counts[filename] += 1
-    else:
-        download_counts[filename] = 1
+    download_counts[filename] = download_counts.get(filename, 0) + 1
     save_download_counts(download_counts)
-    
     return send_from_directory(PUBLIC_UPLOAD_DIR, filename)
+
 
 @app.route('/file-ips/<path:filename>', methods=['GET'])
 def file_ips(filename):
-    """Get IPs that downloaded a specific file"""
     if not session.get('authenticated', False):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
-    
     try:
         downloads = get_file_download_ips(filename)
-        return jsonify({
-            'success': True,
-            'filename': filename,
-            'downloads': downloads,
-            'total': len(downloads)
-        })
+        return jsonify({'success': True, 'filename': filename, 'downloads': downloads, 'total': len(downloads)})
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @app.route('/delete/<path:filename>', methods=['POST'])
 def delete_file(filename):
     if not session.get('authenticated', False):
         return "Unauthorized", 403
-    
     file_path = os.path.join(PUBLIC_UPLOAD_DIR, filename)
     if os.path.exists(file_path):
         os.remove(file_path)
-        
-        # Remove file from download counts
         download_counts = get_download_counts()
         if filename in download_counts:
             del download_counts[filename]
             save_download_counts(download_counts)
-            
         return "File deleted successfully"
+    return "File not found", 404
+
+
+@app.route('/upload-text', methods=['POST'])
+def upload_text():
+    if not session.get('authenticated', False) and not session.get('temp_access', False):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    text_content = data.get('text', '').strip()
+    filename     = data.get('filename', '').strip()
+    destination  = data.get('destination', 'Upload Folder')
+
+    if not text_content:
+        return jsonify({'success': False, 'message': 'No text provided'}), 400
+
+    if not filename:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'paste_{timestamp}.txt'
     else:
-        return "File not found", 404
+        if not filename.lower().endswith('.txt'):
+            filename += '.txt'
+        filename = secure_filename(filename)
+
+    upload_dir = upload_folders.get(destination, PUBLIC_UPLOAD_DIR)
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(text_content)
+
+    download_counts = get_download_counts()
+    if filename not in download_counts:
+        download_counts[filename] = 0
+        save_download_counts(download_counts)
+
+    return jsonify({'success': True, 'message': f'Text saved as {filename}'})
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8000)
