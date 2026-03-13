@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Password Reset</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            width: 100%;
+            max-width: 420px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .card-header h1 { font-size: 1.8em; margin-bottom: 6px; }
+        .card-header p  { opacity: 0.85; font-size: 0.95em; }
+        .card-body { padding: 30px; }
+        .form-group { margin-bottom: 18px; }
+        label { display:block; margin-bottom:8px; color:#555; font-weight:500; font-size:0.95em; }
+        input, select {
+            width: 100%; padding: 12px;
+            border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 14px; transition: border-color 0.3s;
+        }
+        input:focus, select:focus { outline:none; border-color:#f093fb; }
+        button {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white; border: none; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(240,147,251,0.4); }
+        .alert {
+            padding: 12px 16px; border-radius: 8px;
+            margin-bottom: 20px; font-weight: 500; font-size: 0.95em;
+        }
+        .alert-error   { background:#fdecea; color:#c62828; border:1px solid #f5c6cb; }
+        .alert-success { background:#e8f5e9; color:#2e7d32; border:1px solid #c3e6cb; }
+        .back-link {
+            display:block; text-align:center; margin-top:20px;
+            color:#888; font-size:0.9em; text-decoration:none;
+        }
+        .back-link:hover { color:#667eea; }
+        .warning {
+            background:#fff8e1; border:1px solid #ffc107;
+            border-radius:8px; padding:10px 14px;
+            color:#e65100; font-size:0.85em; margin-bottom:20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            <h1>🔑 Password Reset</h1>
+            <p>Reset any account password</p>
+        </div>
+        <div class="card-body">
+
+            <div class="warning">
+                ⚠️ This page is only accessible via secret link. Keep this URL private.
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">❌ {{ error }}</div>
+            {% endif %}
+
+            {% if success %}
+            <div class="alert alert-success">✅ {{ success }}</div>
+            {% endif %}
+
+            <form method="POST" action="/reset/{{ secret }}">
+                <div class="form-group">
+                    <label for="username">👤 Account</label>
+                    <select name="username" id="username">
+                        {% for u in users %}
+                        <option value="{{ u }}">{{ u }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="new_password">🔒 New Password</label>
+                    <input type="password" name="new_password" id="new_password"
+                           placeholder="At least 6 characters" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password">🔒 Confirm Password</label>
+                    <input type="password" name="confirm_password" id="confirm_password"
+                           placeholder="Repeat new password" autocomplete="new-password">
+                </div>
+                <button type="submit">🔄 Reset Password</button>
+            </form>
+
+            <a href="/" class="back-link">← Back to File Manager</a>
+        </div>
+    </div>
+</body>
+</html>
