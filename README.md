@@ -50,3 +50,78 @@
 
 ### Method 1 — Check the console on startup
 Every time the server starts, the reset URL is printed in the terminal:
+🔑 Password reset link: http://localhost:8000/reset/my-secret-reset-key-change-this
+
+text
+
+### Method 2 — Go to the reset URL directly
+http://<your-pi-ip>:8000/reset/<RESET_SECRET>
+
+text
+The default value of `RESET_SECRET` is `my-secret-reset-key-change-this` — find and change it in `uploadServer.py`.
+
+### Method 3 — Reset manually via terminal
+```bash
+cd /home/pi/smartHome
+python3 -c "
+import hashlib, json
+users = json.load(open('uploads/data/users.json'))
+users['admin'] = hashlib.sha256(b'yournewpassword').hexdigest()
+json.dump(users, open('uploads/data/users.json','w'), indent=2)
+print('Done')
+"
+⚠️ Change RESET_SECRET in uploadServer.py to something only you know before exposing the server publicly.
+
+📁 Project Structure
+text
+smartHome/
+├── uploadServer.py          # Main Flask server
+├── templates/
+│   ├── upload.html          # Admin dashboard
+│   ├── public.html          # Public download page
+│   └── reset.html           # Password reset page
+└── uploads/
+    ├── public/              # Uploaded files (served publicly)
+    └── data/
+        ├── users.json           # Hashed user credentials
+        ├── download_counts.json # Per-file download counters
+        └── downloadedIP.txt     # Download IP log
+🔧 Configuration
+Open uploadServer.py and change these before going public:
+
+Variable	Default	Description
+app.secret_key	'your-secret-key...'	Flask session secret — must change
+RESET_SECRET	'my-secret-reset-key...'	URL token for password reset — must change
+upload_folders	uploads/public + DLNA paths	Destination folder mapping
+🔐 Default Credentials
+Username	Password
+admin	13691113
+user1	password1
+Change passwords immediately after first login using the 🔒 Change Password section in the dashboard.
+
+⚙️ Cloudflare Configuration (Required)
+If using Cloudflare DNS:
+
+DNS Records - Add these A records:
+
+home → Your Public IP
+
+uploadserver → Your Public IP
+
+chat → Your Public IP
+
+SSL/TLS Mode - Set to "Full"
+
+Go to: Cloudflare Dashboard → SSL/TLS
+
+Select: "Full" (not Flexible, not Full (strict))
+
+This prevents redirect loops
+
+Wait 2-3 minutes for SSL certificates to generate
+
+⚡ ONE-LINE INSTALLATION
+On fresh Raspberry Pi OS:
+
+bash
+git clone https://github.com/md6410/smartHome.git && cd smartHome && bash install.sh
