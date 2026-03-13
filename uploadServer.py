@@ -17,7 +17,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
     SESSION_REFRESH_EACH_REQUEST=True
-)  # ← was missing closing )
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads', 'public')
@@ -31,19 +31,81 @@ upload_folders = {
     'DLNA Music': '/media/HDD/Music',
     'DLNA Movie': '/media/HDD/Movies',
     'DLNA Pictures': '/media/HDD/Pictures'
-}  # ← was missing closing }
+}
 
-users = {
-    'admin': hashlib.sha256(b'13691113').hexdigest(),
-    'user1': hashlib.sha256(b'password1').hexdigest(),
-}  # ← was missing closing }
+# Secret key for password reset — change this to something only you know
+RESET_SECRET = 'my-secret-reset-key-change-this'
 
-# ✅ FIXED: just an empty dict, NOT a structure description
+USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 TEMP_TOKENS = {}
 
 download_counter_file = os.path.join(DATA_DIR, 'download_counts.json')
 ip_log_file = os.path.join(DATA_DIR, 'downloadedIP.txt')
 
+
+# ── User management ───────────────────────────────────────────────────────────
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    default = {
+        'admin': hashlib.sha256(b'13691113').hexdigest(),
+        'user1': hashlib.sha256(b'password1').hexdigest(),
+    }
+    save_users(default)
+    return default
+
+
+def save_users(users_dict):
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users_dict, f, indent=2)
+
+
+def verify_credentials(username, password):
+    current_users = load_users()
+    if username in current_users:
+        return current_users[username] == hashlib.sha256(password.encode()).hexdigest()
+    return False
+
+
+# ── Token management ──────────────────────────────────────────────────────────
+
+def create_temp_token(minutes, max_files=0, max_size_mb=0):
+    token = secrets.token_urlsafe(32)
+    TEMP_TOKENS[token] = {
+        'expiry': datetime.now() + timedelta(minutes=minutes),
+        'max_files': max_files,
+        'max_size_mb': max_size_mb,
+        'uploaded_files': 0,
+        'uploaded_bytes': 0
+    }
+    return token
+
+
+def validate_temp_token(token):
+    if token in TEMP_TOKENS:
+        if datetime.now() < TEMP_TOKENS[token]['expiry']:
+            return True
+        else:
+            del TEMP_TOKENS[token]
+    return False
+
+
+def get_token_data(token):
+    return TEMP_TOKENS.get(token)
+
+
+def cleanup_expired_tokens():
+    expired = [t for t, data in TEMP_TOKENS.items() if datetime.now() >= data['expiry']]
+    for t in expired:
+        del TEMP_TOKENS[t]
+
+
+# ── File helpers ──────────────────────────────────────────────────────────────
 
 @app.template_filter('get_file_icon')
 def get_file_icon(filename):
@@ -76,45 +138,6 @@ def get_download_counts():
 def save_download_counts(counts):
     with open(download_counter_file, 'w') as f:
         json.dump(counts, f)
-
-
-def verify_credentials(username, password):
-    if username in users:
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        return users[username] == password_hash
-    return False
-
-
-def create_temp_token(minutes, max_files=0, max_size_mb=0):
-    token = secrets.token_urlsafe(32)
-    TEMP_TOKENS[token] = {
-        'expiry': datetime.now() + timedelta(minutes=minutes),
-        'max_files': max_files,
-        'max_size_mb': max_size_mb,
-        'uploaded_files': 0,
-        'uploaded_bytes': 0
-    }  # ← was missing closing }
-    return token
-
-
-def validate_temp_token(token):
-    if token in TEMP_TOKENS:
-        if datetime.now() < TEMP_TOKENS[token]['expiry']:
-            return True
-        else:
-            del TEMP_TOKENS[token]
-    return False
-
-
-def get_token_data(token):
-    return TEMP_TOKENS.get(token)
-
-
-def cleanup_expired_tokens():
-    # ✅ FIXED: use data['expiry'] not exp (which is the whole dict)
-    expired = [t for t, data in TEMP_TOKENS.items() if datetime.now() >= data['expiry']]
-    for t in expired:
-        del TEMP_TOKENS[t]
 
 
 def get_file_size(filename):
@@ -150,6 +173,8 @@ def get_file_download_ips(filename):
     return downloads
 
 
+# ── Routes ────────────────────────────────────────────────────────────────────
+
 @app.route('/')
 def index():
     cleanup_expired_tokens()
@@ -159,7 +184,6 @@ def index():
         if validate_temp_token(token):
             session['temp_access'] = True
             session['temp_token'] = token
-            # ✅ FIXED: was TEMP_TOKENS[token].strftime(...) — token value is a dict now
             session['temp_expiry'] = TEMP_TOKENS[token]['expiry'].strftime('%Y-%m-%d %H:%M:%S')
         else:
             session.pop('temp_access', None)
@@ -191,7 +215,8 @@ def index():
 
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
-        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
+        file_list = [f for f in all_items
+                     if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
     except:
         file_list = []
 
@@ -216,11 +241,11 @@ def index():
 def public_files():
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
-        file_list = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
+        file_list = [f for f in all_items
+                     if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
     except Exception as e:
         print(f"Error listing files: {e}")
         file_list = []
-
     file_info = [{'name': f, 'size': get_file_size(f)} for f in file_list]
     return render_template('public.html', file_list=file_info)
 
@@ -244,12 +269,74 @@ def logout():
     return redirect(url_for('index'))
 
 
+@app.route('/change-password', methods=['POST'])
+def change_password():
+    if not session.get('authenticated', False):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    data             = request.get_json()
+    current_password = data.get('current_password', '')
+    new_password     = data.get('new_password', '')
+    confirm_password = data.get('confirm_password', '')
+
+    if not current_password or not new_password or not confirm_password:
+        return jsonify({'success': False, 'message': 'All fields are required'}), 400
+    if new_password != confirm_password:
+        return jsonify({'success': False, 'message': 'New passwords do not match'}), 400
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
+
+    username      = session.get('username')
+    current_users = load_users()
+
+    if current_users.get(username) != hashlib.sha256(current_password.encode()).hexdigest():
+        return jsonify({'success': False, 'message': 'Current password is incorrect'}), 401
+
+    current_users[username] = hashlib.sha256(new_password.encode()).hexdigest()
+    save_users(current_users)
+    return jsonify({'success': True, 'message': 'Password changed successfully'})
+
+
+@app.route('/reset/<secret>', methods=['GET', 'POST'])
+def reset_password(secret):
+    if secret != RESET_SECRET:
+        return "Not found", 404
+
+    current_users = load_users()
+
+    if request.method == 'POST':
+        username     = request.form.get('username', '').strip()
+        new_password = request.form.get('new_password', '')
+        confirm      = request.form.get('confirm_password', '')
+
+        if not username or not new_password or not confirm:
+            return render_template('reset.html', error='All fields are required',
+                                   secret=secret, users=list(current_users.keys()))
+        if username not in current_users:
+            return render_template('reset.html', error=f'User "{username}" not found',
+                                   secret=secret, users=list(current_users.keys()))
+        if new_password != confirm:
+            return render_template('reset.html', error='Passwords do not match',
+                                   secret=secret, users=list(current_users.keys()))
+        if len(new_password) < 6:
+            return render_template('reset.html', error='Password must be at least 6 characters',
+                                   secret=secret, users=list(current_users.keys()))
+
+        current_users[username] = hashlib.sha256(new_password.encode()).hexdigest()
+        save_users(current_users)
+        return render_template('reset.html',
+                               success=f'Password for "{username}" has been reset',
+                               secret=secret, users=list(current_users.keys()))
+
+    return render_template('reset.html', secret=secret, users=list(current_users.keys()))
+
+
 @app.route('/generate-temp-link', methods=['POST'])
 def generate_temp_link():
     if not session.get('authenticated', False):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data        = request.get_json()
     minutes     = max(1, min(int(data.get('minutes', 60)), 10080))
     max_files   = max(0, int(data.get('max_files', 0)))
     max_size_mb = max(0, int(data.get('max_size_mb', 0)))
@@ -269,7 +356,6 @@ def upload_file():
 
     if not is_auth and not is_temp:
         return "Unauthorized", 403
-
     if 'file' not in request.files:
         return "No file part", 400
 
@@ -311,50 +397,12 @@ def upload_file():
     return "File uploaded successfully"
 
 
-@app.route('/uploads/<path:filename>', methods=['GET'])
-def get_file(filename):
-    client_ip = request.remote_addr
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with open(ip_log_file, 'a', encoding='utf-8') as f:
-        f.write(f"{filename},{client_ip},{request.headers.get('User-Agent', 'Unknown')},{timestamp}\n")
-    download_counts = get_download_counts()
-    download_counts[filename] = download_counts.get(filename, 0) + 1
-    save_download_counts(download_counts)
-    return send_from_directory(PUBLIC_UPLOAD_DIR, filename)
-
-
-@app.route('/file-ips/<path:filename>', methods=['GET'])
-def file_ips(filename):
-    if not session.get('authenticated', False):
-        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
-    try:
-        downloads = get_file_download_ips(filename)
-        return jsonify({'success': True, 'filename': filename, 'downloads': downloads, 'total': len(downloads)})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@app.route('/delete/<path:filename>', methods=['POST'])
-def delete_file(filename):
-    if not session.get('authenticated', False):
-        return "Unauthorized", 403
-    file_path = os.path.join(PUBLIC_UPLOAD_DIR, filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        download_counts = get_download_counts()
-        if filename in download_counts:
-            del download_counts[filename]
-            save_download_counts(download_counts)
-        return "File deleted successfully"
-    return "File not found", 404
-
-
 @app.route('/upload-text', methods=['POST'])
 def upload_text():
     if not session.get('authenticated', False) and not session.get('temp_access', False):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data         = request.get_json()
     text_content = data.get('text', '').strip()
     filename     = data.get('filename', '').strip()
     destination  = data.get('destination', 'Upload Folder')
@@ -385,5 +433,45 @@ def upload_text():
     return jsonify({'success': True, 'message': f'Text saved as {filename}'})
 
 
+@app.route('/uploads/<path:filename>', methods=['GET'])
+def get_file(filename):
+    client_ip = request.remote_addr
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with open(ip_log_file, 'a', encoding='utf-8') as f:
+        f.write(f"{filename},{client_ip},{request.headers.get('User-Agent', 'Unknown')},{timestamp}\n")
+    download_counts = get_download_counts()
+    download_counts[filename] = download_counts.get(filename, 0) + 1
+    save_download_counts(download_counts)
+    return send_from_directory(PUBLIC_UPLOAD_DIR, filename)
+
+
+@app.route('/file-ips/<path:filename>', methods=['GET'])
+def file_ips(filename):
+    if not session.get('authenticated', False):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        downloads = get_file_download_ips(filename)
+        return jsonify({'success': True, 'filename': filename,
+                        'downloads': downloads, 'total': len(downloads)})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/delete/<path:filename>', methods=['POST'])
+def delete_file(filename):
+    if not session.get('authenticated', False):
+        return "Unauthorized", 403
+    file_path = os.path.join(PUBLIC_UPLOAD_DIR, filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        download_counts = get_download_counts()
+        if filename in download_counts:
+            del download_counts[filename]
+            save_download_counts(download_counts)
+        return "File deleted successfully"
+    return "File not found", 404
+
+
 if __name__ == '__main__':
+    print(f"\n🔑 Password reset link: http://localhost:8000/reset/{RESET_SECRET}\n")
     app.run(debug=True, host='0.0.0.0', port=8000)
