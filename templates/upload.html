@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>File Manager - Admin</title>
+    <title>File Manager</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -10,114 +10,145 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 12px;
         }
 
         .container {
             max-width: 900px;
             margin: 0 auto;
             background: white;
-            border-radius: 20px;
+            border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }
 
+        /* ── Header ─────────────────────────────────────── */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
+            padding: 24px 20px 20px;
             text-align: center;
         }
 
-        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header h1 { font-size: 1.7em; margin-bottom: 6px; }
+        .header p  { font-size: 0.9em; opacity: 0.85; }
 
         .btn-public {
             background: white !important;
             color: #667eea !important;
             border: 2px solid white;
-            padding: 12px 24px !important;
+            padding: 10px 20px !important;
             border-radius: 25px;
             cursor: pointer;
-            font-size: 16px !important;
+            font-size: 14px !important;
             font-weight: 700 !important;
             transition: all 0.3s;
             text-decoration: none;
             display: inline-block !important;
-            margin-top: 15px;
+            margin-top: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: auto;
         }
 
         .btn-public:hover {
             background: rgba(255,255,255,0.9) !important;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
         }
 
+        /* ── Auth bar ────────────────────────────────────── */
         .auth-section {
-            padding: 20px 30px;
+            padding: 16px 20px;
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
         }
 
         .auth-form {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
         }
 
+        .auth-form input {
+            width: auto;
+            min-width: 130px;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .auth-form button { white-space: nowrap; width: auto; }
+
+        /* ── Temp banner ─────────────────────────────────── */
         .temp-banner {
             background: linear-gradient(135deg, #fff8e1, #fff3cd);
             border-bottom: 2px solid #ffc107;
-            padding: 15px 30px;
+            padding: 12px 16px;
             text-align: center;
         }
 
         .temp-banner .expiry-badge {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
             background: white;
             border: 2px solid #ffc107;
             border-radius: 25px;
-            padding: 8px 20px;
+            padding: 8px 16px;
             font-weight: 600;
             color: #e65100;
-            font-size: 0.95em;
+            font-size: 0.88em;
         }
 
-        .content { padding: 30px; }
+        /* ── Content ─────────────────────────────────────── */
+        .content { padding: 16px; }
 
         .upload-section {
             background: #f8f9fa;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
         }
 
         .upload-section h2 {
             color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5em;
+            margin-bottom: 16px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        .form-group { margin-bottom: 15px; }
+        .upload-section h2 .badge {
+            font-size: 0.6em;
+            font-weight: 400;
+            color: #888;
+            background: #e9ecef;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        /* ── Form controls ───────────────────────────────── */
+        .form-group { margin-bottom: 14px; }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #555;
             font-weight: 500;
+            font-size: 0.92em;
         }
 
-        input[type="file"],
         input[type="text"],
         input[type="password"],
         input[type="number"],
-        select {
+        select,
+        textarea {
             width: 100%;
-            padding: 12px;
+            padding: 11px 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
@@ -125,27 +156,24 @@
             background: white;
         }
 
-        input[type="file"]:focus,
         input[type="text"]:focus,
         input[type="password"]:focus,
         input[type="number"]:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+        select:focus,
+        textarea:focus { outline: none; border-color: #667eea; }
 
-        .auth-form input { width: auto; min-width: 150px; }
-
+        /* ── Buttons ─────────────────────────────────────── */
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 30px;
+            padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
         }
 
         button:hover {
@@ -153,34 +181,51 @@
             box-shadow: 0 5px 15px rgba(102,126,234,0.4);
         }
 
-        button:active { transform: translateY(0); }
+        button:active  { transform: translateY(0); }
         button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
         .btn-delete {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            padding: 8px 16px;
-            font-size: 14px;
-            margin-left: 5px;
+            padding: 8px 12px;
+            font-size: 13px;
+            width: auto;
         }
 
         .btn-view-ips {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            padding: 8px 16px;
-            font-size: 14px;
+            padding: 8px 12px;
+            font-size: 13px;
+            width: auto;
         }
 
         .btn-logout {
             background: #6c757d;
-            padding: 8px 20px;
+            padding: 8px 18px;
             font-size: 14px;
+            width: auto;
             margin-left: 10px;
         }
 
-        /* Drop Zone */
+        /* ── Responsive 2-col grid ───────────────────────── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .grid-2-bottom {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        /* ── Drop Zone ───────────────────────────────────── */
         .drop-zone {
             border: 2px dashed #c0c9f7;
             border-radius: 12px;
-            padding: 35px 20px;
+            padding: 28px 16px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
@@ -191,14 +236,22 @@
         .drop-zone:hover, .drop-zone.dragover {
             border-color: #667eea;
             background: #f0f4ff;
-            transform: scale(1.01);
         }
 
-        .drop-zone.dragover { box-shadow: 0 0 0 4px rgba(102,126,234,0.15); }
-        .drop-zone .drop-icon { font-size: 2.5em; margin-bottom: 10px; display: block; transition: transform 0.3s; }
+        .drop-zone.dragover {
+            box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+        }
+
+        .drop-zone .drop-icon {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+            display: block;
+            transition: transform 0.3s;
+        }
+
         .drop-zone.dragover .drop-icon { transform: translateY(-5px); }
-        .drop-zone .drop-text { color: #555; font-size: 1em; margin-bottom: 12px; }
-        .drop-zone .drop-sub  { color: #aaa; font-size: 0.85em; }
+        .drop-zone .drop-text { color: #555; font-size: 0.95em; margin-bottom: 6px; }
+        .drop-zone .drop-sub  { color: #aaa; font-size: 0.82em; }
 
         .drop-zone input[type="file"] {
             position: absolute;
@@ -211,14 +264,14 @@
             padding: 0;
         }
 
-        /* File Queue */
-        .file-queue { margin-top: 15px; display: none; flex-direction: column; gap: 8px; }
+        /* ── File Queue ──────────────────────────────────── */
+        .file-queue { margin-top: 12px; display: none; flex-direction: column; gap: 7px; }
 
         .queue-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 10px 14px;
+            gap: 10px;
+            padding: 9px 12px;
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
@@ -226,17 +279,27 @@
         }
 
         .queue-item:hover { border-color: #667eea; box-shadow: 0 2px 8px rgba(102,126,234,0.1); }
-        .queue-item .q-icon   { font-size: 1.4em; }
+        .queue-item .q-icon    { font-size: 1.3em; flex-shrink: 0; }
         .queue-item .q-details { flex: 1; min-width: 0; }
-        .queue-item .q-name   { font-weight: 600; color: #333; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .queue-item .q-size   { color: #888; font-size: 0.82em; }
+
+        .queue-item .q-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-item .q-size { color: #888; font-size: 0.8em; }
 
         .queue-item .q-status {
-            font-size: 0.82em;
+            font-size: 0.78em;
             font-weight: 600;
-            padding: 3px 10px;
+            padding: 3px 8px;
             border-radius: 20px;
             white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .q-status.pending   { background: #e9ecef; color: #555; }
@@ -246,16 +309,16 @@
 
         .queue-item .q-remove {
             background: none; border: none; color: #ccc;
-            font-size: 1.1em; cursor: pointer; padding: 2px 6px;
-            border-radius: 4px; transform: none; box-shadow: none;
-            min-width: unset; transition: color 0.2s;
+            font-size: 1em; cursor: pointer; padding: 2px 6px;
+            border-radius: 4px; width: auto; transform: none;
+            box-shadow: none; transition: color 0.2s; flex-shrink: 0;
         }
 
         .queue-item .q-remove:hover { color: #f5576c; transform: none; box-shadow: none; }
 
         .queue-item .q-progress {
             width: 100%; height: 4px; background: #e0e0e0;
-            border-radius: 2px; margin-top: 5px; overflow: hidden; display: none;
+            border-radius: 2px; margin-top: 4px; overflow: hidden; display: none;
         }
 
         .queue-item .q-progress-bar {
@@ -268,84 +331,159 @@
         .queue-summary {
             display: none;
             margin-top: 10px;
-            padding: 10px 14px;
+            padding: 9px 12px;
             background: #f0f4ff;
             border-radius: 8px;
-            font-size: 0.9em;
+            font-size: 0.85em;
             color: #555;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        /* Limits badge */
-        .limits-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .queue-summary .btn-clear {
+            background: none;
+            border: 1px solid #f5576c;
+            color: #f5576c;
+            padding: 4px 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            border-radius: 6px;
+            transform: none;
+            box-shadow: none;
+            cursor: pointer;
+            width: auto;
+        }
+
+        /* ── Limits badges ───────────────────────────────── */
+        .limits-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 
         .limit-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
+            gap: 5px;
+            padding: 5px 12px;
             border-radius: 20px;
-            font-size: 0.85em;
+            font-size: 0.82em;
             font-weight: 600;
             background: white;
             border: 2px solid #ffc107;
             color: #e65100;
         }
 
-        /* Temp link box */
-        .temp-link-box {
-            display: none;
-            margin-top: 20px;
-            background: #f0f4ff;
-            border: 2px solid #667eea;
-            border-radius: 10px;
-            padding: 20px;
-        }
-
-        .temp-link-box .link-expiry { color: #555; font-size: 0.9em; margin-bottom: 12px; }
-        .temp-link-box .link-expiry strong { color: #f5576c; }
-
-        .temp-link-row { display: flex; gap: 10px; align-items: center; }
-        .temp-link-row input { flex: 1; background: white; color: #333; font-family: monospace; font-size: 13px; }
-
+        /* ── Duration hint ───────────────────────────────── */
         .duration-hint {
-            color: #888;
-            font-size: 0.9em;
-            margin-bottom: 15px;
+            color: #777;
+            font-size: 0.88em;
+            margin-bottom: 14px;
             padding: 8px 12px;
             background: white;
             border-radius: 6px;
             border: 1px solid #e0e0e0;
+            line-height: 1.5;
         }
 
-        /* File list */
+        /* ── Temp link box ───────────────────────────────── */
+        .temp-link-box {
+            display: none;
+            margin-top: 16px;
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .temp-link-box .link-expiry { color: #555; font-size: 0.88em; margin-bottom: 10px; }
+        .temp-link-box .link-expiry strong { color: #f5576c; }
+
+        .temp-link-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .temp-link-row input {
+            background: white;
+            color: #333;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .temp-link-row button { width: 100%; padding: 11px; }
+
+        /* ── Inline action row ───────────────────────────── */
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .action-row button { width: 100%; }
+
+        .status-msg {
+            display: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.92em;
+            width: 100%;
+        }
+
+        /* ── File list ───────────────────────────────────── */
+        .section-title {
+            font-size: 1.15em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
         .file-list { list-style: none; }
 
         .file-item {
             background: white;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
+            padding: 14px;
+            margin-bottom: 10px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 10px;
             transition: all 0.3s;
         }
 
-        .file-item:hover { border-color: #667eea; box-shadow: 0 5px 15px rgba(102,126,234,0.1); }
-        .file-info { flex: 1; }
-        .file-actions { display: flex; gap: 5px; }
-        .file-name { font-size: 1.1em; color: #333; margin-bottom: 8px; word-break: break-all; }
+        .file-item:hover { border-color: #667eea; box-shadow: 0 4px 12px rgba(102,126,234,0.1); }
+
+        .file-info { flex: 1; min-width: 0; }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .file-actions button { flex: 1; }
+
+        .file-name {
+            font-size: 1em;
+            color: #333;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
         .file-name a { color: #667eea; text-decoration: none; font-weight: 600; }
         .file-name a:hover { text-decoration: underline; }
-        .file-meta { color: #888; font-size: 0.9em; }
+        .file-meta { color: #888; font-size: 0.85em; }
+
+        .no-downloads { text-align: center; color: #888; padding: 30px 20px; }
 
         .locked-message { text-align: center; color: #666; padding: 40px 20px; }
-        .locked-message svg { width: 64px; height: 64px; margin-bottom: 20px; opacity: 0.5; }
+        .locked-message svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: 0.5; }
 
-        /* Modal */
+        /* ── IP Modal ────────────────────────────────────── */
         .modal {
             display: none;
             position: fixed;
@@ -355,80 +493,100 @@
             overflow: auto;
             background-color: rgba(0,0,0,0.5);
             animation: fadeIn 0.3s;
+            padding: 10px;
         }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .modal-content {
             background-color: #fefefe;
-            margin: 5% auto;
-            padding: 0;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 700px;
+            margin: 4% auto;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 680px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             animation: slideIn 0.3s;
         }
 
         @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
+            from { transform: translateY(-40px); opacity: 0; }
             to   { transform: translateY(0);     opacity: 1; }
         }
 
         .modal-header {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             color: white;
-            padding: 20px 30px;
-            border-radius: 15px 15px 0 0;
+            padding: 18px 20px;
+            border-radius: 14px 14px 0 0;
         }
 
-        .modal-header h2 { margin: 0; font-size: 1.5em; }
-        .modal-body { padding: 30px; max-height: 500px; overflow-y: auto; }
-        .close { color: white; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px; }
+        .modal-header h2 { margin: 0; font-size: 1.2em; }
+        .modal-body      { padding: 20px; max-height: 70vh; overflow-y: auto; }
+
+        .close {
+            color: white; float: right;
+            font-size: 26px; font-weight: bold;
+            cursor: pointer; line-height: 20px;
+        }
+
         .close:hover { opacity: 0.8; }
+
         .ip-list { list-style: none; }
 
         .ip-item {
             background: #f8f9fa;
-            padding: 15px;
-            margin-bottom: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
             border-radius: 8px;
             border-left: 4px solid #4facfe;
             transition: all 0.3s;
         }
 
-        .ip-item:hover { background: #e9ecef; transform: translateX(5px); }
-        .ip-address { font-weight: 600; color: #333; font-size: 1.1em; margin-bottom: 5px; }
-        .ip-details { color: #666; font-size: 0.9em; margin-top: 5px; line-height: 1.6; }
-
-        .no-downloads { text-align: center; color: #888; padding: 40px 20px; }
+        .ip-item:hover { background: #e9ecef; }
+        .ip-address { font-weight: 600; color: #333; font-size: 0.95em; margin-bottom: 4px; }
+        .ip-details { color: #666; font-size: 0.82em; margin-top: 4px; line-height: 1.6; word-break: break-word; }
 
         .loading { text-align: center; padding: 20px; }
         .loading::after { content: '...'; animation: dots 1.5s infinite; }
+        @keyframes dots { 0%,20%{content:'.'} 40%{content:'..'} 60%,100%{content:'...'} }
 
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40%      { content: '..'; }
-            60%, 100%{ content: '...'; }
+        /* ── Tablet ≥ 600px ──────────────────────────────── */
+        @media (min-width: 600px) {
+            body    { padding: 20px; }
+            .content { padding: 24px; }
+            .upload-section { padding: 24px; }
+            .upload-section h2 { font-size: 1.4em; }
+
+            .grid-2        { grid-template-columns: 1fr 1fr; }
+            .grid-2-bottom { grid-template-columns: 1fr 1fr; }
+
+            .temp-link-row { flex-direction: row; align-items: center; }
+            .temp-link-row input  { flex: 1; }
+            .temp-link-row button { width: auto; min-width: 110px; }
+
+            .action-row button { width: auto; min-width: 200px; }
+            .status-msg        { width: auto; flex: 1; }
+
+            .file-item {
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .file-actions button { flex: none; }
         }
 
-        @media (max-width: 600px) {
-            .file-item { flex-direction: column; align-items: flex-start; }
-            .file-actions { margin-top: 10px; width: 100%; flex-direction: column; }
-            .file-actions button { width: 100%; margin-left: 0 !important; }
-            .modal-content { width: 95%; margin: 10% auto; }
-            .modal-body { padding: 20px; }
-            .temp-link-row { flex-direction: column; }
-            .temp-link-row input { width: 100%; }
+        /* ── Desktop ≥ 768px ─────────────────────────────── */
+        @media (min-width: 768px) {
+            .header h1 { font-size: 2em; }
+            .upload-section h2 { font-size: 1.5em; }
         }
     </style>
 </head>
 <body>
 <div class="container">
 
-    <!-- Expired link banner -->
     {% if link_expired %}
-    <div style="background: linear-gradient(135deg, #f5576c, #f093fb); color:white; padding:18px 30px; text-align:center; font-weight:600; font-size:1.05em;">
+    <div style="background: linear-gradient(135deg, #f5576c, #f093fb); color:white; padding:16px 20px; text-align:center; font-weight:600; font-size:1em;">
         ⏰ This temporary link has expired. Please request a new one from the admin.
     </div>
     {% endif %}
@@ -437,9 +595,9 @@
     <div class="header">
         <h1>🗂️ File Manager</h1>
         <p>{% if is_temp %}Temporary Upload Access{% else %}Admin Dashboard{% endif %}</p>
-        <div style="margin-top:20px;">
-            <a href="/files" target="_blank" class="btn-public">👁️ View Public Download Page</a>
-        </div>
+        {% if is_authenticated %}
+        <a href="/files" target="_blank" class="btn-public">👁️ View Public Download Page</a>
+        {% endif %}
     </div>
 
     <!-- Auth / Status bar -->
@@ -471,10 +629,7 @@
 
         <!-- 📤 Upload File -->
         <div class="upload-section" style="border-left: 5px solid #667eea;">
-            <h2 style="display:flex; align-items:center; gap:10px;">
-                📤 Upload File
-                <span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Drag & drop • Multi-file</span>
-            </h2>
+            <h2>📤 Upload File <span class="badge">Drag & drop • Multi-file</span></h2>
 
             {% if is_temp and token_data %}
             <div class="limits-bar">
@@ -482,7 +637,7 @@
                 <span class="limit-badge">📁 Files: {{ token_data.uploaded_files }} / {{ token_data.max_files }}</span>
                 {% endif %}
                 {% if token_data.max_size_mb > 0 %}
-                <span class="limit-badge">💾 Size used: {{ "%.1f"|format(token_data.uploaded_bytes / 1048576) }} / {{ token_data.max_size_mb }} MB</span>
+                <span class="limit-badge">💾 {{ "%.1f"|format(token_data.uploaded_bytes / 1048576) }} / {{ token_data.max_size_mb }} MB</span>
                 {% endif %}
                 {% if token_data.max_files == 0 and token_data.max_size_mb == 0 %}
                 <span class="limit-badge" style="border-color:#28a745; color:#155724;">✅ No upload limits</span>
@@ -501,18 +656,13 @@
 
             <div class="queue-summary" id="queueSummary">
                 <span id="queueSummaryText"></span>
-                <button onclick="clearAllFiles()"
-                    style="background:none; border:1px solid #f5576c; color:#f5576c;
-                           padding:4px 12px; font-size:0.85em; font-weight:600;
-                           border-radius:6px; transform:none; box-shadow:none; cursor:pointer;">
-                    🗑️ Clear All
-                </button>
+                <button class="btn-clear" onclick="clearAllFiles()">🗑️ Clear All</button>
             </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:15px;">
+            <div class="grid-2-bottom">
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="destination">📁 Destination</label>
-                    <select name="destination" id="destination">
+                    <select id="destination">
                         <option value="Upload Folder">Upload Folder</option>
                         <option value="DLNA Music">DLNA Music</option>
                         <option value="DLNA Movie">DLNA Movie</option>
@@ -529,14 +679,12 @@
 
         <!-- 📋 Paste Text -->
         <div class="upload-section" style="border-left: 5px solid #4facfe;">
-            <h2 style="display:flex; align-items:center; gap:10px;">
-                📋 Paste Text
-                <span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Saves as .txt file</span>
-            </h2>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+            <h2>📋 Paste Text <span class="badge">Saves as .txt file</span></h2>
+
+            <div class="grid-2">
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="textFilename">📝 Filename <span style="color:#aaa; font-weight:400;">(optional)</span></label>
-                    <input type="text" id="textFilename" placeholder="e.g. my-notes  →  saves as my-notes.txt">
+                    <input type="text" id="textFilename" placeholder="e.g. my-notes">
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="textDestination">📁 Destination</label>
@@ -548,33 +696,31 @@
                     </select>
                 </div>
             </div>
+
             <div class="form-group">
                 <label for="pasteArea">📄 Text Content</label>
-                <textarea id="pasteArea" rows="8" placeholder="Paste your text here..."
-                    style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px;
-                           font-family:monospace; font-size:14px; resize:vertical;
-                           transition:border-color 0.3s; line-height:1.6;"
+                <textarea id="pasteArea" rows="7" placeholder="Paste your text here..."
+                    style="resize:vertical; line-height:1.6; font-family:monospace;"
                     onfocus="this.style.borderColor='#667eea'"
                     onblur="this.style.borderColor='#e0e0e0'"></textarea>
             </div>
-            <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+
+            <div class="action-row">
                 <button id="uploadTextBtn" onclick="uploadText()"
-                    style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); min-width:180px;">
+                    style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                     💾 Save as Text File
                 </button>
-                <div id="textUploadStatus" style="display:none; padding:10px 18px; border-radius:8px; font-weight:500; flex:1;"></div>
+                <div id="textUploadStatus" class="status-msg"></div>
             </div>
         </div>
 
         {% if is_authenticated %}
 
-        <!-- 🔗 Generate Temp Link -->
+        <!-- 🔗 Generate Temporary Upload Link -->
         <div class="upload-section" style="border-left: 5px solid #f093fb;">
-            <h2 style="display:flex; align-items:center; gap:10px;">
-                🔗 Generate Temporary Upload Link
-                <span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Share with guests</span>
-            </h2>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:12px;">
+            <h2>🔗 Generate Temporary Link <span class="badge">Share with guests</span></h2>
+
+            <div class="grid-2">
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="tempDuration">⏱️ Duration</label>
                     <input type="number" id="tempDuration" value="1" min="1" oninput="updateDurationHint()">
@@ -588,32 +734,34 @@
                     </select>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:12px;">
+
+            <div class="grid-2">
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="maxFiles">📁 Max Files <span style="color:#aaa; font-weight:400;">(0 = unlimited)</span></label>
-                    <input type="number" id="maxFiles" value="0" min="0" placeholder="0 = unlimited" oninput="updateDurationHint()">
+                    <input type="number" id="maxFiles" value="0" min="0" oninput="updateDurationHint()">
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
-                    <label for="maxSizeMb">💾 Max Total Size MB <span style="color:#aaa; font-weight:400;">(0 = unlimited)</span></label>
-                    <input type="number" id="maxSizeMb" value="0" min="0" placeholder="0 = unlimited" oninput="updateDurationHint()">
+                    <label for="maxSizeMb">💾 Max Size MB <span style="color:#aaa; font-weight:400;">(0 = unlimited)</span></label>
+                    <input type="number" id="maxSizeMb" value="0" min="0" oninput="updateDurationHint()">
                 </div>
             </div>
+
             <div class="duration-hint">
-                🕐 Link will expire in <strong id="hintText">1 hour</strong>
-                <span id="limitsHint"></span>
+                🕐 Expires in <strong id="hintText">1 hour</strong><span id="limitsHint"></span>
             </div>
+
             <button onclick="generateTempLink()"
-                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); min-width:200px;">
+                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                 🔗 Generate Link
             </button>
+
             <div class="temp-link-box" id="tempLinkResult">
                 <div class="link-expiry">⏰ Expires at: <strong id="tempLinkExpiry"></strong></div>
                 <div id="tempLinkLimits" style="font-size:0.85em; color:#555; margin-bottom:12px;"></div>
                 <div class="temp-link-row">
                     <input type="text" id="tempLinkUrl" readonly>
                     <button onclick="copyTempLink()"
-                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                               padding:12px 20px; white-space:nowrap; min-width:110px;" id="copyBtn">
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" id="copyBtn">
                         📋 Copy
                     </button>
                 </div>
@@ -622,37 +770,35 @@
 
         <!-- 🔒 Change Password -->
         <div class="upload-section" style="border-left: 5px solid #28a745;">
-            <h2 style="display:flex; align-items:center; gap:10px;">
-                🔒 Change Password
-                <span style="font-size:0.6em; font-weight:400; color:#888; background:#e9ecef; padding:3px 10px; border-radius:20px;">Account: {{ username }}</span>
-            </h2>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+            <h2>🔒 Change Password <span class="badge">Account: {{ username }}</span></h2>
+
+            <div class="grid-2">
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="currentPassword">🔑 Current Password</label>
-                    <input type="password" id="currentPassword" placeholder="Enter current password" autocomplete="current-password">
+                    <input type="password" id="currentPassword" placeholder="Current password" autocomplete="current-password">
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label for="newPassword">🔒 New Password</label>
                     <input type="password" id="newPassword" placeholder="At least 6 characters" autocomplete="new-password">
                 </div>
             </div>
-            <div class="form-group" style="margin-top:15px; max-width: calc(50% - 7.5px);">
+
+            <div class="form-group">
                 <label for="confirmPassword">🔒 Confirm New Password</label>
                 <input type="password" id="confirmPassword" placeholder="Repeat new password" autocomplete="new-password">
             </div>
-            <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap; margin-top:15px;">
+
+            <div class="action-row">
                 <button onclick="changePassword()"
-                    style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); min-width:200px;">
+                    style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
                     💾 Change Password
                 </button>
-                <div id="passwordChangeStatus" style="display:none; padding:10px 18px; border-radius:8px; font-weight:500; flex:1;"></div>
+                <div id="passwordChangeStatus" class="status-msg"></div>
             </div>
         </div>
 
-        {% endif %}
-
         <!-- 📁 File List -->
-        <h2 style="margin-bottom:15px;">📁 Uploaded Files</h2>
+        <div class="section-title">📁 Uploaded Files</div>
         {% if file_list %}
         <ul class="file-list">
             {% for file in file_list %}
@@ -661,20 +807,20 @@
                     <div class="file-name">
                         <a href="/uploads/{{ file.name }}" target="_blank">📎 {{ file.name }}</a>
                     </div>
-                    <div class="file-meta">Size: {{ file.size }} | Downloads: {{ file.downloads }}</div>
+                    <div class="file-meta">{{ file.size }} &nbsp;|&nbsp; {{ file.downloads }} downloads</div>
                 </div>
-                {% if is_authenticated %}
                 <div class="file-actions">
-                    <button class="btn-view-ips" onclick="viewIPs('{{ file.name }}')">👁️ View IPs</button>
-                    <button class="btn-delete" onclick="deleteFile('{{ file.name }}')">🗑️ Delete</button>
+                    <button class="btn-view-ips" onclick="viewIPs('{{ file.name }}')">👁️ IPs</button>
+                    <button class="btn-delete"   onclick="deleteFile('{{ file.name }}')">🗑️ Delete</button>
                 </div>
-                {% endif %}
             </li>
             {% endfor %}
         </ul>
         {% else %}
         <div class="no-downloads"><p>No files uploaded yet</p></div>
         {% endif %}
+
+        {% endif %}{# end is_authenticated #}
 
         {% else %}
         <div class="locked-message">
@@ -701,7 +847,6 @@
 </div>
 
 <script>
-    // ── Token limits from server (0 = unlimited) ──────────
     const TOKEN_MAX_FILES   = {{ token_data.max_files      if token_data else 0 }};
     const TOKEN_MAX_SIZE_MB = {{ token_data.max_size_mb     if token_data else 0 }};
     const TOKEN_USED_FILES  = {{ token_data.uploaded_files  if token_data else 0 }};
@@ -710,83 +855,74 @@
 
     // ── Auth ──────────────────────────────────────────────
     function login() {
-        var username = document.getElementById('loginUsername').value;
-        var password = document.getElementById('loginPassword').value;
-        if (!username || !password) { alert('Please enter both username and password'); return; }
-        var formData = new FormData();
-        formData.append('username', username);
-        formData.append('password', password);
-        fetch('/login', { method: 'POST', body: formData })
+        var u = document.getElementById('loginUsername').value;
+        var p = document.getElementById('loginPassword').value;
+        if (!u || !p) { alert('Please enter both username and password'); return; }
+        var fd = new FormData();
+        fd.append('username', u);
+        fd.append('password', p);
+        fetch('/login', { method: 'POST', body: fd })
             .then(r => r.json())
-            .then(data => { if (data.success) location.reload(); else alert(data.message || 'Incorrect username or password'); })
-            .catch(err => alert('Login failed: ' + err));
+            .then(d => { if (d.success) location.reload(); else alert(d.message || 'Incorrect credentials'); })
+            .catch(e => alert('Login failed: ' + e));
     }
 
     // ── File Queue ────────────────────────────────────────
-    let fileQueue = [];
-    let nextId = 0;
+    let fileQueue = [], nextId = 0;
 
-    function getFileIcon(filename) {
-        const ext = filename.split('.').pop().toLowerCase();
-        const icons = {
-            pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊',
-            zip:'🗜️', rar:'🗜️', '7z':'🗜️',
-            mp3:'🎵', wav:'🎵', flac:'🎵',
-            mp4:'🎬', avi:'🎬', mkv:'🎬',
-            jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️',
-            txt:'📃', py:'🐍', js:'📜', html:'🌐'
-        };
-        return icons[ext] || '📦';
+    function getFileIcon(name) {
+        const ext = name.split('.').pop().toLowerCase();
+        const m = { pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',
+                    zip:'🗜️',rar:'🗜️','7z':'🗜️',mp3:'🎵',wav:'🎵',flac:'🎵',
+                    mp4:'🎬',avi:'🎬',mkv:'🎬',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',
+                    gif:'🖼️',txt:'📃',py:'🐍',js:'📜',html:'🌐' };
+        return m[ext] || '📦';
     }
 
-    function formatSize(bytes) {
-        if (bytes < 1024)       return bytes + ' B';
-        if (bytes < 1048576)    return (bytes/1024).toFixed(1) + ' KB';
-        if (bytes < 1073741824) return (bytes/1048576).toFixed(1) + ' MB';
-        return (bytes/1073741824).toFixed(2) + ' GB';
+    function formatSize(b) {
+        if (b < 1024)       return b + ' B';
+        if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+        if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+        return (b/1073741824).toFixed(2) + ' GB';
     }
 
-    function getStatusLabel(status) {
-        if (status === 'pending')   return 'Pending';
-        if (status === 'uploading') return 'Uploading…';
-        if (status === 'done')      return '✅ Done';
-        if (status === 'error')     return '❌ Failed';
-        return status;
+    function getStatusLabel(s) {
+        return {pending:'Pending', uploading:'Uploading…', done:'✅ Done', error:'❌ Failed'}[s] || s;
     }
 
     function onFilesSelected(files) {
-        for (const file of files) {
-            const exists = fileQueue.some(q => q.file.name === file.name && q.file.size === file.size);
-            if (!exists) fileQueue.push({ file, id: nextId++, status: 'pending', message: '' });
+        for (const f of files) {
+            if (!fileQueue.some(q => q.file.name === f.name && q.file.size === f.size))
+                fileQueue.push({ file: f, id: nextId++, status: 'pending', message: '' });
         }
         document.getElementById('file').value = '';
         renderQueue();
     }
 
     function renderQueue() {
-        const container    = document.getElementById('fileQueue');
-        const summary      = document.getElementById('queueSummary');
-        const summaryTxt   = document.getElementById('queueSummaryText');
+        const c = document.getElementById('fileQueue');
+        const s = document.getElementById('queueSummary');
+        const t = document.getElementById('queueSummaryText');
 
         if (fileQueue.length === 0) {
-            container.style.display = 'none';
-            summary.style.display   = 'none';
+            c.style.display = 'none';
+            s.style.display = 'none';
             resetDropZone();
             return;
         }
 
-        container.style.display = 'flex';
-        summary.style.display   = 'flex';
+        c.style.display = 'flex';
+        s.style.display = 'flex';
 
-        const totalSize = fileQueue.reduce((a, q) => a + q.file.size, 0);
-        const done      = fileQueue.filter(q => q.status === 'done').length;
-        summaryTxt.textContent = `${fileQueue.length} file${fileQueue.length > 1 ? 's' : ''} selected  •  ${formatSize(totalSize)}  •  ${done} uploaded`;
+        const total = fileQueue.reduce((a, q) => a + q.file.size, 0);
+        const done  = fileQueue.filter(q => q.status === 'done').length;
+        t.textContent = `${fileQueue.length} file${fileQueue.length > 1 ? 's' : ''}  •  ${formatSize(total)}  •  ${done} uploaded`;
 
         document.getElementById('dropIcon').textContent = '📂';
         document.getElementById('dropText').innerHTML   = `<strong>${fileQueue.length} file${fileQueue.length > 1 ? 's' : ''} selected</strong>`;
-        document.getElementById('dropSub').textContent  = formatSize(totalSize) + ' total — drop more to add';
+        document.getElementById('dropSub').textContent  = formatSize(total) + ' total — drop more to add';
 
-        container.innerHTML = fileQueue.map(q => `
+        c.innerHTML = fileQueue.map(q => `
             <div class="queue-item" id="qi-${q.id}">
                 <span class="q-icon">${getFileIcon(q.file.name)}</span>
                 <div class="q-details">
@@ -796,21 +932,12 @@
                 </div>
                 <span class="q-status ${q.status}" id="qs-${q.id}">${getStatusLabel(q.status)}</span>
                 ${q.status !== 'uploading' && q.status !== 'done'
-                    ? `<button class="q-remove" onclick="removeFromQueue(${q.id})" title="Remove">✕</button>`
-                    : ''}
-            </div>
-        `).join('');
+                    ? `<button class="q-remove" onclick="removeFromQueue(${q.id})">✕</button>` : ''}
+            </div>`).join('');
     }
 
-    function removeFromQueue(id) {
-        fileQueue = fileQueue.filter(q => q.id !== id);
-        renderQueue();
-    }
-
-    function clearAllFiles() {
-        fileQueue = fileQueue.filter(q => q.status === 'uploading');
-        renderQueue();
-    }
+    function removeFromQueue(id) { fileQueue = fileQueue.filter(q => q.id !== id); renderQueue(); }
+    function clearAllFiles()     { fileQueue = fileQueue.filter(q => q.status === 'uploading'); renderQueue(); }
 
     // ── Upload All ────────────────────────────────────────
     async function uploadAllFiles() {
@@ -820,54 +947,26 @@
             return;
         }
 
-        // Pre-upload checks for temp users
         if (IS_TEMP_USER) {
             if (TOKEN_MAX_FILES > 0) {
-                const wouldUpload = TOKEN_USED_FILES + pending.length;
-                if (wouldUpload > TOKEN_MAX_FILES) {
-                    const remaining = TOKEN_MAX_FILES - TOKEN_USED_FILES;
-                    if (remaining <= 0) {
-                        alert(`⛔ Upload limit reached. You have used all ${TOKEN_MAX_FILES} allowed file${TOKEN_MAX_FILES > 1 ? 's' : ''}.`);
-                        return;
-                    }
-                    const proceed = confirm(`⚠️ You can only upload ${remaining} more file${remaining > 1 ? 's' : ''} (limit: ${TOKEN_MAX_FILES}). Only the first ${remaining} will be uploaded. Continue?`);
-                    if (!proceed) return;
+                const remaining = TOKEN_MAX_FILES - TOKEN_USED_FILES;
+                if (remaining <= 0) { alert(`⛔ File limit reached (${TOKEN_MAX_FILES} files).`); return; }
+                if (TOKEN_USED_FILES + pending.length > TOKEN_MAX_FILES) {
+                    if (!confirm(`⚠️ Only ${remaining} more file${remaining > 1 ? 's' : ''} allowed. Upload first ${remaining}?`)) return;
                     pending.splice(remaining);
                 }
             }
-
             if (TOKEN_MAX_SIZE_MB > 0) {
-                const maxBytes     = TOKEN_MAX_SIZE_MB * 1024 * 1024;
-                const remainBytes  = maxBytes - TOKEN_USED_BYTES;
-                const pendingBytes = pending.reduce((a, q) => a + q.file.size, 0);
-
-                if (remainBytes <= 0) {
-                    alert(`⛔ Size limit reached. You have used all ${TOKEN_MAX_SIZE_MB} MB allowed.`);
-                    return;
-                }
-
-                if (pendingBytes > remainBytes) {
-                    const remainMB = (remainBytes / 1024 / 1024).toFixed(1);
-                    let runningBytes = 0;
-                    const fittingFiles = [];
-                    for (const item of pending) {
-                        if (runningBytes + item.file.size <= remainBytes) {
-                            fittingFiles.push(item);
-                            runningBytes += item.file.size;
-                        }
-                    }
-                    if (fittingFiles.length === 0) {
-                        alert(`⛔ Not enough space. Your files need ${(pendingBytes/1024/1024).toFixed(1)} MB but only ${remainMB} MB remaining.`);
-                        return;
-                    }
-                    const proceed = confirm(`⚠️ Only ${fittingFiles.length} file${fittingFiles.length > 1 ? 's' : ''} (${(runningBytes/1024/1024).toFixed(1)} MB) fit within your ${remainMB} MB remaining. Continue with those?`);
-                    if (!proceed) return;
-                    pending.forEach(item => {
-                        if (!fittingFiles.includes(item)) {
-                            item.status  = 'error';
-                            item.message = 'Exceeds size limit';
-                        }
-                    });
+                const maxBytes    = TOKEN_MAX_SIZE_MB * 1024 * 1024;
+                const remainBytes = maxBytes - TOKEN_USED_BYTES;
+                const needBytes   = pending.reduce((a, q) => a + q.file.size, 0);
+                if (remainBytes <= 0) { alert(`⛔ Size limit reached (${TOKEN_MAX_SIZE_MB} MB).`); return; }
+                if (needBytes > remainBytes) {
+                    let rb = 0;
+                    const fit = pending.filter(item => { if (rb + item.file.size <= remainBytes) { rb += item.file.size; return true; } return false; });
+                    if (fit.length === 0) { alert(`⛔ Not enough space. Need ${(needBytes/1048576).toFixed(1)} MB, only ${(remainBytes/1048576).toFixed(1)} MB left.`); return; }
+                    if (!confirm(`⚠️ Only ${fit.length} file${fit.length > 1 ? 's' : ''} (${(rb/1048576).toFixed(1)} MB) fit. Continue?`)) return;
+                    pending.forEach(item => { if (!fit.includes(item)) { item.status = 'error'; item.message = 'Exceeds size limit'; } });
                     renderQueue();
                 }
             }
@@ -879,42 +978,31 @@
         btn.disabled      = true;
         btn.textContent   = `⏳ Uploading 0/${toUpload.length}…`;
 
-        let completed = 0;
+        let done = 0;
         for (const item of toUpload) {
             item.status = 'uploading';
             renderQueue();
-            try {
-                await uploadSingleFile(item, destination);
-                item.status = 'done';
-            } catch (err) {
-                item.status  = 'error';
-                item.message = err.message || 'Failed';
-            }
-            completed++;
-            btn.textContent = `⏳ Uploading ${completed}/${toUpload.length}…`;
+            try   { await uploadSingleFile(item, destination); item.status = 'done'; }
+            catch (err) { item.status = 'error'; item.message = err.message || 'Failed'; }
+            btn.textContent = `⏳ Uploading ${++done}/${toUpload.length}…`;
             renderQueue();
         }
 
         btn.disabled    = false;
         btn.textContent = '🚀 Upload All';
         renderQueue();
-
-        if (fileQueue.filter(q => q.status === 'error').length === 0) {
-            setTimeout(() => location.reload(), 1200);
-        }
+        if (fileQueue.filter(q => q.status === 'error').length === 0) setTimeout(() => location.reload(), 1200);
     }
 
-    function uploadSingleFile(item, destination) {
+    function uploadSingleFile(item, dest) {
         return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append('file', item.file);
-            formData.append('destination', destination);
-
+            const fd = new FormData();
+            fd.append('file', item.file);
+            fd.append('destination', dest);
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/upload', true);
             xhr.withCredentials = true;
-
-            xhr.upload.onprogress = function(e) {
+            xhr.upload.onprogress = e => {
                 if (e.lengthComputable) {
                     const pct  = (e.loaded / e.total) * 100;
                     const prog = document.getElementById('qp-'  + item.id);
@@ -923,19 +1011,12 @@
                     if (bar)  bar.style.width    = pct + '%';
                 }
             };
-
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    resolve();
-                } else {
-                    let msg = xhr.responseText;
-                    try { msg = JSON.parse(xhr.responseText).message || msg; } catch(e) {}
-                    reject(new Error(msg));
-                }
+            xhr.onload = () => {
+                if (xhr.status === 200) { resolve(); }
+                else { let msg = xhr.responseText; try { msg = JSON.parse(msg).message || msg; } catch(e){} reject(new Error(msg)); }
             };
-
             xhr.onerror = () => reject(new Error('Network error'));
-            xhr.send(formData);
+            xhr.send(fd);
         });
     }
 
@@ -947,87 +1028,64 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const dropZone = document.getElementById('dropZone');
-        if (dropZone) {
-            dropZone.addEventListener('click', function(e) {
-                if (e.target !== document.getElementById('file'))
-                    document.getElementById('file').click();
-            });
-
-            ['dragenter', 'dragover'].forEach(evt => {
-                dropZone.addEventListener(evt, function(e) {
-                    e.preventDefault(); e.stopPropagation();
-                    dropZone.classList.add('dragover');
-                    document.getElementById('dropIcon').textContent = '📂';
-                    document.getElementById('dropText').innerHTML   = '<strong>Drop files here!</strong>';
-                    document.getElementById('dropSub').textContent  = 'Release to add to queue';
-                });
-            });
-
-            ['dragleave', 'dragend'].forEach(evt => {
-                dropZone.addEventListener(evt, function(e) {
-                    e.preventDefault(); e.stopPropagation();
-                    dropZone.classList.remove('dragover');
-                    if (fileQueue.length === 0) resetDropZone(); else renderQueue();
-                });
-            });
-
-            dropZone.addEventListener('drop', function(e) {
+        const dz = document.getElementById('dropZone');
+        if (dz) {
+            dz.addEventListener('click', e => { if (e.target !== document.getElementById('file')) document.getElementById('file').click(); });
+            ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {
                 e.preventDefault(); e.stopPropagation();
-                dropZone.classList.remove('dragover');
+                dz.classList.add('dragover');
+                document.getElementById('dropIcon').textContent = '📂';
+                document.getElementById('dropText').innerHTML   = '<strong>Drop files here!</strong>';
+                document.getElementById('dropSub').textContent  = 'Release to add to queue';
+            }));
+            ['dragleave','dragend'].forEach(ev => dz.addEventListener(ev, e => {
+                e.preventDefault(); e.stopPropagation();
+                dz.classList.remove('dragover');
+                fileQueue.length === 0 ? resetDropZone() : renderQueue();
+            }));
+            dz.addEventListener('drop', e => {
+                e.preventDefault(); e.stopPropagation();
+                dz.classList.remove('dragover');
                 if (e.dataTransfer.files.length > 0) onFilesSelected(e.dataTransfer.files);
             });
         }
 
         updateDurationHint();
 
-        ['loginUsername', 'loginPassword'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('keypress', function(e) { if (e.key === 'Enter') login(); });
+        ['loginUsername','loginPassword'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
         });
     });
 
     // ── Text Upload ───────────────────────────────────────
     async function uploadText() {
-        const text        = document.getElementById('pasteArea').value.trim();
-        const filename    = document.getElementById('textFilename').value.trim();
-        const destination = document.getElementById('textDestination').value;
-        const statusDiv   = document.getElementById('textUploadStatus');
-        const btn         = document.getElementById('uploadTextBtn');
+        const text = document.getElementById('pasteArea').value.trim();
+        const name = document.getElementById('textFilename').value.trim();
+        const dest = document.getElementById('textDestination').value;
+        const stat = document.getElementById('textUploadStatus');
+        const btn  = document.getElementById('uploadTextBtn');
 
-        const showStatus = (msg, ok) => {
-            statusDiv.style.cssText = `display:block; padding:10px 18px; border-radius:8px; font-weight:500; flex:1;
-                background:${ok ? '#e8f5e9' : '#fdecea'};
-                color:${ok ? '#2e7d32' : '#c62828'};
-                border:1px solid ${ok ? '#c3e6cb' : '#f5c6cb'};`;
-            statusDiv.textContent = msg;
+        const show = (msg, ok) => {
+            stat.style.cssText = `display:block; padding:10px 16px; border-radius:8px; font-weight:500; font-size:0.92em;
+                background:${ok ? '#e8f5e9':'#fdecea'}; color:${ok ? '#2e7d32':'#c62828'};
+                border:1px solid ${ok ? '#c3e6cb':'#f5c6cb'};`;
+            stat.textContent = msg;
         };
 
-        if (!text) { showStatus('⚠️ Please paste some text first.', false); return; }
-
-        btn.disabled    = true;
-        btn.textContent = '⏳ Saving...';
+        if (!text) { show('⚠️ Please paste some text first.', false); return; }
+        btn.disabled = true; btn.textContent = '⏳ Saving...';
         try {
-            const response = await fetch('/upload-text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, filename, destination })
-            });
-            const result = await response.json();
-            if (result.success) {
-                showStatus('✅ ' + result.message, true);
-                document.getElementById('pasteArea').value   = '';
+            const r = await fetch('/upload-text', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, filename: name, destination: dest}) });
+            const d = await r.json();
+            if (d.success) {
+                show('✅ ' + d.message, true);
+                document.getElementById('pasteArea').value    = '';
                 document.getElementById('textFilename').value = '';
                 setTimeout(() => location.reload(), 1500);
-            } else {
-                showStatus('❌ ' + result.message, false);
-            }
-        } catch (err) {
-            showStatus('❌ Network error: ' + err.message, false);
-        } finally {
-            btn.disabled    = false;
-            btn.textContent = '💾 Save as Text File';
-        }
+            } else { show('❌ ' + d.message, false); }
+        } catch(e) { show('❌ Network error: ' + e.message, false); }
+        finally    { btn.disabled = false; btn.textContent = '💾 Save as Text File'; }
     }
 
     // ── Temp Link ─────────────────────────────────────────
@@ -1035,22 +1093,19 @@
         const dur  = document.getElementById('tempDuration');
         const unit = document.getElementById('tempUnit');
         if (!dur || !unit) return;
-
         const total = (parseInt(dur.value) || 1) * parseInt(unit.value);
-        let text = '';
-        if (total < 60)   text = total + ' minute' + (total !== 1 ? 's' : '');
-        else if (total < 1440) { const h = total/60;  text = (Number.isInteger(h) ? h : h.toFixed(1)) + ' hour' + (h !== 1 ? 's' : ''); }
-        else               { const d = total/1440; text = (Number.isInteger(d) ? d : d.toFixed(1)) + ' day'  + (d !== 1 ? 's' : ''); }
-        document.getElementById('hintText').textContent = text;
-
-        const mf = parseInt(document.getElementById('maxFiles').value)  || 0;
+        let txt = total < 60 ? total + ' minute' + (total !== 1 ? 's' : '')
+                : total < 1440 ? (() => { const h = total/60; return (Number.isInteger(h) ? h : h.toFixed(1)) + ' hour' + (h !== 1 ? 's' : ''); })()
+                : (() => { const d = total/1440; return (Number.isInteger(d) ? d : d.toFixed(1)) + ' day' + (d !== 1 ? 's' : ''); })();
+        document.getElementById('hintText').textContent = txt;
+        const mf = parseInt(document.getElementById('maxFiles').value) || 0;
         const ms = parseInt(document.getElementById('maxSizeMb').value) || 0;
-        const limitsEl = document.getElementById('limitsHint');
-        if (limitsEl) {
-            let parts = [];
+        const lh = document.getElementById('limitsHint');
+        if (lh) {
+            const parts = [];
             if (mf > 0) parts.push(`max ${mf} file${mf > 1 ? 's' : ''}`);
             if (ms > 0) parts.push(`max ${ms} MB`);
-            limitsEl.textContent = parts.length ? '  •  ' + parts.join(', ') : '  •  no limits';
+            lh.textContent = parts.length ? '  •  ' + parts.join(', ') : '  •  no limits';
         }
     }
 
@@ -1060,42 +1115,29 @@
         const maxFiles = parseInt(document.getElementById('maxFiles').value)  || 0;
         const maxSize  = parseInt(document.getElementById('maxSizeMb').value) || 0;
         try {
-            const response = await fetch('/generate-temp-link', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ minutes: amount * unit, max_files: maxFiles, max_size_mb: maxSize })
-            });
-            const data = await response.json();
-            if (data.success) {
-                document.getElementById('tempLinkUrl').value     = data.link;
-                document.getElementById('tempLinkExpiry').textContent = data.expiry;
-                let limitsText = [];
-                if (maxFiles > 0) limitsText.push(`📁 Max ${maxFiles} file${maxFiles > 1 ? 's' : ''}`);
-                if (maxSize > 0)  limitsText.push(`💾 Max ${maxSize} MB total`);
-                document.getElementById('tempLinkLimits').textContent =
-                    limitsText.length ? limitsText.join('  •  ') : '✅ No upload limits set';
+            const r = await fetch('/generate-temp-link', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({minutes: amount * unit, max_files: maxFiles, max_size_mb: maxSize}) });
+            const d = await r.json();
+            if (d.success) {
+                document.getElementById('tempLinkUrl').value          = d.link;
+                document.getElementById('tempLinkExpiry').textContent = d.expiry;
+                const parts = [];
+                if (maxFiles > 0) parts.push(`📁 Max ${maxFiles} file${maxFiles > 1 ? 's' : ''}`);
+                if (maxSize  > 0) parts.push(`💾 Max ${maxSize} MB`);
+                document.getElementById('tempLinkLimits').textContent = parts.length ? parts.join('  •  ') : '✅ No upload limits';
                 document.getElementById('tempLinkResult').style.display = 'block';
-            } else {
-                alert('Failed: ' + data.message);
-            }
-        } catch (err) {
-            alert('Error: ' + err.message);
-        }
+            } else { alert('Failed: ' + d.message); }
+        } catch(e) { alert('Error: ' + e.message); }
     }
 
     function copyTempLink() {
-        const input = document.getElementById('tempLinkUrl');
-        const btn   = document.getElementById('copyBtn');
-        input.focus();
-        input.select();
-        input.setSelectionRange(0, 99999);
-        let copied = false;
-        try { copied = document.execCommand('copy'); } catch(e) {}
-        if (copied) {
-            btn.textContent = '✅ Copied!';
-            setTimeout(() => btn.textContent = '📋 Copy', 2000);
-        } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(input.value)
+        const inp = document.getElementById('tempLinkUrl');
+        const btn = document.getElementById('copyBtn');
+        inp.focus(); inp.select(); inp.setSelectionRange(0, 99999);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch(e) {}
+        if (ok) { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); }
+        else if (navigator.clipboard) {
+            navigator.clipboard.writeText(inp.value)
                 .then(() => { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); })
                 .catch(() => { btn.textContent = '⚠️ Copy manually'; setTimeout(() => btn.textContent = '📋 Copy', 3000); });
         }
@@ -1103,49 +1145,38 @@
 
     // ── Change Password ───────────────────────────────────
     async function changePassword() {
-        const current = document.getElementById('currentPassword').value;
-        const newPass = document.getElementById('newPassword').value;
-        const confirm = document.getElementById('confirmPassword').value;
-        const statusDiv = document.getElementById('passwordChangeStatus');
+        const cur  = document.getElementById('currentPassword').value;
+        const nw   = document.getElementById('newPassword').value;
+        const conf = document.getElementById('confirmPassword').value;
+        const stat = document.getElementById('passwordChangeStatus');
 
-        const showStatus = (msg, ok) => {
-            statusDiv.style.cssText = `display:block; padding:10px 18px; border-radius:8px; font-weight:500; flex:1;
-                background:${ok ? '#e8f5e9' : '#fdecea'};
-                color:${ok ? '#2e7d32' : '#c62828'};
-                border:1px solid ${ok ? '#c3e6cb' : '#f5c6cb'};`;
-            statusDiv.textContent = msg;
+        const show = (msg, ok) => {
+            stat.style.cssText = `display:block; padding:10px 16px; border-radius:8px; font-weight:500; font-size:0.92em;
+                background:${ok ? '#e8f5e9':'#fdecea'}; color:${ok ? '#2e7d32':'#c62828'};
+                border:1px solid ${ok ? '#c3e6cb':'#f5c6cb'};`;
+            stat.textContent = msg;
         };
 
-        if (!current || !newPass || !confirm) { showStatus('⚠️ All fields are required', false); return; }
-        if (newPass !== confirm)              { showStatus('⚠️ New passwords do not match', false); return; }
-        if (newPass.length < 6)              { showStatus('⚠️ Password must be at least 6 characters', false); return; }
+        if (!cur || !nw || !conf)  { show('⚠️ All fields are required', false); return; }
+        if (nw !== conf)           { show('⚠️ New passwords do not match', false); return; }
+        if (nw.length < 6)         { show('⚠️ Password must be at least 6 characters', false); return; }
 
         try {
-            const response = await fetch('/change-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ current_password: current, new_password: newPass, confirm_password: confirm })
-            });
-            const result = await response.json();
-            if (result.success) {
-                showStatus('✅ ' + result.message, true);
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value     = '';
-                document.getElementById('confirmPassword').value = '';
-            } else {
-                showStatus('❌ ' + result.message, false);
-            }
-        } catch (err) {
-            showStatus('❌ Network error: ' + err.message, false);
-        }
+            const r = await fetch('/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({current_password: cur, new_password: nw, confirm_password: conf}) });
+            const d = await r.json();
+            if (d.success) {
+                show('✅ ' + d.message, true);
+                ['currentPassword','newPassword','confirmPassword'].forEach(id => document.getElementById(id).value = '');
+            } else { show('❌ ' + d.message, false); }
+        } catch(e) { show('❌ Network error: ' + e.message, false); }
     }
 
     // ── File Management ───────────────────────────────────
     function deleteFile(filename) {
-        if (!confirm('Are you sure you want to delete "' + filename + '"?')) return;
-        fetch('/delete/' + encodeURIComponent(filename), { method: 'POST', body: new FormData() })
-            .then(r => r.text()).then(data => { alert(data); location.reload(); })
-            .catch(err => alert('Delete failed: ' + err));
+        if (!confirm('Delete "' + filename + '"?')) return;
+        fetch('/delete/' + encodeURIComponent(filename), { method:'POST', body: new FormData() })
+            .then(r => r.text()).then(() => location.reload())
+            .catch(e => alert('Delete failed: ' + e));
     }
 
     function viewIPs(filename) {
@@ -1153,32 +1184,31 @@
         document.getElementById('modalBody').innerHTML   = '<p class="loading">Loading</p>';
         fetch('/file-ips/' + encodeURIComponent(filename))
             .then(r => { if (!r.ok) throw new Error('Status: ' + r.status); return r.json(); })
-            .then(data => {
-                if (data.success) displayIPs(data);
-                else document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + (data.message || 'Failed') + '</div>';
-            })
-            .catch(err => { document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + err.message + '</div>'; });
+            .then(d => { if (d.success) displayIPs(d); else document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + (d.message || 'Failed') + '</div>'; })
+            .catch(e => { document.getElementById('modalBody').innerHTML = '<div class="no-downloads">❌ ' + e.message + '</div>'; });
     }
 
     function displayIPs(data) {
-        var html = '<h3 style="margin-bottom:15px;color:#333;">File: <strong>' + data.filename + '</strong></h3>';
-        html += '<p style="margin-bottom:20px;color:#666;font-size:1.1em;">📥 Total Downloads: <strong>' + data.total + '</strong></p>';
+        let html = `<h3 style="margin-bottom:12px;color:#333;">📎 ${data.filename}</h3>`;
+        html += `<p style="margin-bottom:16px;color:#666;">📥 Total Downloads: <strong>${data.total}</strong></p>`;
         if (data.downloads.length > 0) {
             html += '<ul class="ip-list">';
-            data.downloads.forEach(function(d) {
-                html += '<li class="ip-item"><div class="ip-address">🌐 ' + d.ip + '</div>';
-                html += '<div class="ip-details">📅 <strong>Time:</strong> ' + d.timestamp + '<br>💻 <strong>Device:</strong> ' + d.user_agent + '</div></li>';
+            data.downloads.forEach(d => {
+                html += `<li class="ip-item">
+                    <div class="ip-address">🌐 ${d.ip}</div>
+                    <div class="ip-details">📅 ${d.timestamp}<br>💻 ${d.user_agent}</div>
+                </li>`;
             });
             html += '</ul>';
         } else {
-            html += '<div class="no-downloads"><p style="font-size:1.2em;">📭 No downloads yet</p></div>';
+            html += '<div class="no-downloads">📭 No downloads yet</div>';
         }
         document.getElementById('modalBody').innerHTML = html;
     }
 
     function closeModal() { document.getElementById('ipModal').style.display = 'none'; }
-    window.onclick = function(e) { if (e.target == document.getElementById('ipModal')) closeModal(); };
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+    window.onclick = e => { if (e.target === document.getElementById('ipModal')) closeModal(); };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 </body>
 </html>
