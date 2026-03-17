@@ -580,6 +580,91 @@
             .header h1 { font-size: 2em; }
             .upload-section h2 { font-size: 1.5em; }
         }
+		
+		
+		.btn-copy {
+			background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+			padding: 8px 12px;
+			font-size: 13px;
+			width: auto;
+		}
+		
+		.btn-share {
+			background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+			color: white;
+			padding: 9px 16px;
+			border-radius: 8px;
+			font-size: 13px;
+			font-weight: 600;
+			border: none;
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+			width: auto;
+			flex: 1;
+		}
+
+		.btn-share:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(240,147,251,0.35);
+		}
+
+		/* ── File Link Modal ─────────────────────────────────── */
+		.link-modal-overlay {
+			display: none;
+			position: fixed;
+			inset: 0;
+			z-index: 9999;
+			background: rgba(0,0,0,0.55);
+			align-items: flex-end;
+			justify-content: center;
+			padding: 12px;
+			animation: fadeIn 0.2s;
+		}
+
+		.link-modal-overlay.open { display: flex; }
+
+		.link-modal-box {
+			background: white;
+			border-radius: 18px;
+			width: 100%;
+			max-width: 480px;
+			padding: 22px;
+			box-shadow: 0 -4px 30px rgba(0,0,0,0.2);
+			animation: slideUp 0.25s ease;
+		}
+
+		@keyframes slideUp {
+			from { transform: translateY(60px); opacity: 0; }
+			to   { transform: translateY(0);    opacity: 1; }
+		}
+
+		.link-modal-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 16px;
+		}
+
+		.link-modal-header strong { font-size: 1.05em; color: #333; }
+
+		.link-modal-close {
+			background: none; border: none; font-size: 1.4em;
+			cursor: pointer; color: #888; padding: 0 4px;
+			width: auto; box-shadow: none; transform: none;
+		}
+
+		.btn-getlink {
+			background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+			padding: 8px 12px;
+			font-size: 13px;
+			width: auto;
+			color: white;
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			font-weight: 600;
+		}
+
     </style>
 </head>
 <body>
@@ -797,28 +882,44 @@
             </div>
         </div>
 
-        <!-- 📁 File List -->
-        <div class="section-title">📁 Uploaded Files</div>
-        {% if file_list %}
-        <ul class="file-list">
-            {% for file in file_list %}
-            <li class="file-item">
-                <div class="file-info">
-                    <div class="file-name">
-                        <a href="/uploads/{{ file.name }}" target="_blank">📎 {{ file.name }}</a>
-                    </div>
-                    <div class="file-meta">{{ file.size }} &nbsp;|&nbsp; {{ file.downloads }} downloads</div>
-                </div>
-                <div class="file-actions">
-                    <button class="btn-view-ips" onclick="viewIPs('{{ file.name }}')">👁️ IPs</button>
-                    <button class="btn-delete"   onclick="deleteFile('{{ file.name }}')">🗑️ Delete</button>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <div class="no-downloads"><p>No files uploaded yet</p></div>
-        {% endif %}
+		 <!-- 📁 File List -->
+		<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+			<div class="section-title" style="margin-bottom:0; border-bottom:none;">📁 Uploaded Files</div>
+			{% if file_list %}
+			<button onclick="deleteAllFiles()"
+				style="background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+					   padding:9px 18px; font-size:13px; font-weight:700; width:auto;
+					   border-radius:8px; border:none; color:white; cursor:pointer;">
+				🗑️ Delete All Files
+			</button>
+			{% endif %}
+		</div>
+		<div style="border-bottom:2px solid #e9ecef; margin-bottom:14px;"></div>
+
+		{% if file_list %}
+		<ul class="file-list">
+			{% for file in file_list %}
+			<li class="file-item">
+				<div class="file-info">
+					<div class="file-name">
+						<a href="/uploads/{{ file.name }}" target="_blank">{{ file.name | get_file_icon }} {{ file.name }}</a>
+					</div>
+					<div class="file-meta">{{ file.size }} &nbsp;|&nbsp; {{ file.downloads }} downloads</div>
+				</div>
+				<div class="file-actions">
+					<div class="file-actions">
+				<button class="btn-getlink"  onclick="openLinkModal('{{ file.name }}')">🔗 Get Link</button>
+				<button class="btn-view-ips" onclick="viewIPs('{{ file.name }}')">👁️ IPs</button>
+				<button class="btn-delete"   onclick="deleteFile('{{ file.name }}')">🗑️</button>
+					</div>
+
+				</div>
+			</li>
+			{% endfor %}
+		</ul>
+		{% else %}
+		<div class="no-downloads"><p>No files uploaded yet</p></div>
+		{% endif %}
 
         {% endif %}{# end is_authenticated #}
 
@@ -832,6 +933,73 @@
         {% endif %}
     </div>
 </div>
+
+
+<!-- File Link Modal -->
+<div class="link-modal-overlay" id="linkModal" onclick="closeLinkModal(event)">
+    <div class="link-modal-box">
+        <div class="link-modal-header">
+            <strong>🔗 Generate Download Link</strong>
+            <button class="link-modal-close" onclick="document.getElementById('linkModal').classList.remove('open')">✕</button>
+        </div>
+
+        <div style="font-size:0.88em; color:#667eea; font-weight:600; margin-bottom:14px;
+                    background:#f0f4ff; padding:8px 12px; border-radius:8px; word-break:break-all;"
+             id="linkModalFilename"></div>
+
+        <div class="grid-2" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+                <label>⏱️ Duration</label>
+                <input type="number" id="fileLinkDuration" value="1" min="1" oninput="updateFileLinkHint()">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label>📐 Unit</label>
+                <select id="fileLinkUnit" onchange="updateFileLinkHint()">
+                    <option value="1">Minutes</option>
+                    <option value="60" selected>Hours</option>
+                    <option value="1440">Days</option>
+                    <option value="0">Never expires</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>⬇️ Max Downloads <span style="color:#aaa; font-weight:400;">(0 = unlimited)</span></label>
+            <input type="number" id="fileLinkMaxDl" value="0" min="0" oninput="updateFileLinkHint()">
+        </div>
+
+        <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px;
+                    padding:8px 12px; font-size:0.85em; color:#856404; margin-bottom:14px;"
+             id="fileLinkHint">
+            🕐 Link expires in 1 hour • Unlimited downloads
+        </div>
+
+        <button onclick="generateFileLink()"
+            style="background:linear-gradient(135deg,#f093fb,#f5576c); margin-bottom:12px;">
+            ✨ Generate Link
+        </button>
+
+        <div id="fileLinkResult" style="display:none;">
+            <div style="font-size:0.82em; color:#555; margin-bottom:8px;">
+                ⏰ Expires: <strong id="fileLinkExpiry" style="color:#f5576c;"></strong>
+                &nbsp;|&nbsp; ⬇️ Max: <strong id="fileLinkMaxLabel" style="color:#667eea;"></strong>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="text" id="fileLinkUrl" readonly
+                    style="flex:1; font-family:monospace; font-size:12px; background:#f8f9fa; min-width:0;">
+                <button id="fileLinkCopyBtn" onclick="copyGeneratedLink()"
+                    style="background:linear-gradient(135deg,#667eea,#764ba2); width:auto; padding:10px 16px; white-space:nowrap;">
+                    📋 Copy
+                </button>
+                <button onclick="shareGeneratedLink()"
+                    style="background:linear-gradient(135deg,#f093fb,#f5576c); width:auto; padding:10px 16px; white-space:nowrap;">
+                    📤 Share
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- IP Modal -->
 <div id="ipModal" class="modal">
@@ -1209,6 +1377,270 @@
     function closeModal() { document.getElementById('ipModal').style.display = 'none'; }
     window.onclick = e => { if (e.target === document.getElementById('ipModal')) closeModal(); };
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+	
+	
+	function copyFileUrl(filename, btn) {
+    const url = window.location.origin + '/uploads/' + encodeURIComponent(filename);
+    const original = btn.textContent;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url)
+            .then(() => { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = original, 2000); })
+            .catch(() => fallbackCopy(url, btn, original));
+    } else {
+        fallbackCopy(url, btn, original);
+    }
+	}
+
+	function fallbackCopy(text, btn, original) {
+		const ta = document.createElement('textarea');
+		ta.value = text;
+		ta.style.cssText = 'position:fixed;opacity:0;';
+		document.body.appendChild(ta);
+		ta.focus(); ta.select();
+		try {
+			document.execCommand('copy');
+			btn.textContent = '✅ Copied!';
+		} catch(e) {
+			prompt('Copy this URL:', text);
+		}
+		document.body.removeChild(ta);
+		setTimeout(() => btn.textContent = original, 2000);
+	}
+
+	async function deleteAllFiles() {
+		if (!confirm('⚠️ Are you sure you want to DELETE ALL uploaded files? This cannot be undone.')) return;
+		try {
+			const r = await fetch('/delete-all', { method: 'POST', body: new FormData() });
+			const d = await r.json();
+			if (d.success) { alert('✅ ' + d.message); location.reload(); }
+			else alert('❌ ' + d.message);
+		} catch(e) { alert('Error: ' + e.message); }
+	}
+
+
+function shareFile(filename, btn) {
+    const url  = window.location.origin + '/uploads/' + encodeURIComponent(filename);
+    const name = decodeURIComponent(filename);
+
+    // HTTPS — native OS share sheet (WhatsApp, Telegram, etc.)
+    if (navigator.share) {
+        navigator.share({ title: name, text: 'Download: ' + name, url: url })
+            .then(() => {
+                const orig = btn.textContent;
+                btn.textContent = '✅ Shared!';
+                setTimeout(() => btn.textContent = orig, 2000);
+            })
+            .catch(err => { if (err.name !== 'AbortError') showShareDialog(url, name); });
+    } else {
+        // HTTP fallback — custom share popup
+        showShareDialog(url, name);
+    }
+}
+
+function showShareDialog(url, name) {
+    // Remove any existing dialog
+    const existing = document.getElementById('shareDialog');
+    if (existing) existing.remove();
+
+    const encoded  = encodeURIComponent(url);
+    const text     = encodeURIComponent('Download file: ' + name + '\n' + url);
+
+    const dialog = document.createElement('div');
+    dialog.id = 'shareDialog';
+    dialog.style.cssText = `
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.55);
+        display: flex; align-items: flex-end; justify-content: center;
+        animation: fadeIn 0.2s;
+        padding: 12px;
+    `;
+
+    dialog.innerHTML = `
+        <div style="
+            background: white; border-radius: 18px 18px 14px 14px;
+            width: 100%; max-width: 480px;
+            padding: 20px; box-shadow: 0 -4px 30px rgba(0,0,0,0.2);
+            animation: slideUp 0.25s ease;
+        ">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <strong style="font-size:1.05em; color:#333;">📤 Share File</strong>
+                <button onclick="document.getElementById('shareDialog').remove()"
+                    style="background:none; border:none; font-size:1.4em; cursor:pointer;
+                           color:#888; padding:0 4px; width:auto; box-shadow:none; transform:none;">✕</button>
+            </div>
+
+            <div style="
+                background:#f8f9fa; border-radius:10px; padding:10px 14px;
+                font-family:monospace; font-size:12px; color:#555;
+                word-break:break-all; margin-bottom:16px; border:1px solid #e0e0e0;
+            ">${url}</div>
+
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:16px;">
+
+                <a href="https://wa.me/?text=${text}" target="_blank" rel="noopener"
+                   style="text-decoration:none;" onclick="setTimeout(()=>document.getElementById('shareDialog').remove(),500)">
+                    <div style="text-align:center; padding:12px 6px; background:#e7fce8; border-radius:10px; cursor:pointer;">
+                        <div style="font-size:1.8em;">💬</div>
+                        <div style="font-size:0.72em; color:#25D366; font-weight:600; margin-top:4px;">WhatsApp</div>
+                    </div>
+                </a>
+
+                <a href="https://t.me/share/url?url=${encoded}&text=${encodeURIComponent('Download: ' + name)}" target="_blank" rel="noopener"
+                   style="text-decoration:none;" onclick="setTimeout(()=>document.getElementById('shareDialog').remove(),500)">
+                    <div style="text-align:center; padding:12px 6px; background:#e8f4fd; border-radius:10px; cursor:pointer;">
+                        <div style="font-size:1.8em;">✈️</div>
+                        <div style="font-size:0.72em; color:#0088cc; font-weight:600; margin-top:4px;">Telegram</div>
+                    </div>
+                </a>
+
+                <a href="mailto:?subject=${encodeURIComponent('File: ' + name)}&body=${text}" target="_blank" rel="noopener"
+                   style="text-decoration:none;" onclick="setTimeout(()=>document.getElementById('shareDialog').remove(),500)">
+                    <div style="text-align:center; padding:12px 6px; background:#fef3e2; border-radius:10px; cursor:pointer;">
+                        <div style="font-size:1.8em;">📧</div>
+                        <div style="font-size:0.72em; color:#e65100; font-weight:600; margin-top:4px;">Email</div>
+                    </div>
+                </a>
+
+                <div style="text-align:center; padding:12px 6px; background:#f0f4ff; border-radius:10px; cursor:pointer;"
+                     onclick="copyFromDialog('${url.replace(/'/g,"\\'")}', this)">
+                    <div style="font-size:1.8em;">🔗</div>
+                    <div style="font-size:0.72em; color:#667eea; font-weight:600; margin-top:4px;" id="copyDialogLabel">Copy Link</div>
+                </div>
+
+            </div>
+        </div>
+
+        <style>
+            @keyframes slideUp {
+                from { transform: translateY(60px); opacity: 0; }
+                to   { transform: translateY(0);    opacity: 1; }
+            }
+        </style>
+    `;
+
+    // Close on backdrop click
+    dialog.addEventListener('click', function(e) {
+        if (e.target === dialog) dialog.remove();
+    });
+
+    document.body.appendChild(dialog);
+}
+
+function copyFromDialog(url, el) {
+    const label = document.getElementById('copyDialogLabel');
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            label.textContent = '✅ Copied!';
+            setTimeout(() => {
+                label.textContent = 'Copy Link';
+                document.getElementById('shareDialog').remove();
+            }, 1500);
+        });
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        label.textContent = '✅ Copied!';
+        setTimeout(() => {
+            label.textContent = 'Copy Link';
+            document.getElementById('shareDialog').remove();
+        }, 1500);
+    }
+}
+
+
+// ── File Link Modal ───────────────────────────────────
+let _currentLinkFile = '';
+
+function openLinkModal(filename) {
+    _currentLinkFile = filename;
+    document.getElementById('linkModalFilename').textContent = '📎 ' + filename;
+    document.getElementById('fileLinkResult').style.display = 'none';
+    document.getElementById('fileLinkDuration').value = '1';
+    document.getElementById('fileLinkUnit').value     = '60';
+    document.getElementById('fileLinkMaxDl').value    = '0';
+    updateFileLinkHint();
+    document.getElementById('linkModal').classList.add('open');
+}
+
+function closeLinkModal(e) {
+    if (e.target === document.getElementById('linkModal'))
+        document.getElementById('linkModal').classList.remove('open');
+}
+
+function updateFileLinkHint() {
+    const dur  = parseInt(document.getElementById('fileLinkDuration').value) || 1;
+    const unit = parseInt(document.getElementById('fileLinkUnit').value);
+    const maxd = parseInt(document.getElementById('fileLinkMaxDl').value) || 0;
+
+    let timeText = 'Never expires';
+    if (unit > 0) {
+        const total = dur * unit;
+        if (total < 60)   timeText = `Expires in ${total} minute${total !== 1 ? 's' : ''}`;
+        else if (total < 1440) { const h = total/60; timeText = `Expires in ${Number.isInteger(h) ? h : h.toFixed(1)} hour${h !== 1 ? 's' : ''}`; }
+        else { const d = total/1440; timeText = `Expires in ${Number.isInteger(d) ? d : d.toFixed(1)} day${d !== 1 ? 's' : ''}`; }
+    }
+
+    const dlText = maxd > 0 ? `Max ${maxd} download${maxd > 1 ? 's' : ''}` : 'Unlimited downloads';
+    document.getElementById('fileLinkHint').textContent = `🕐 ${timeText}  •  ⬇️ ${dlText}`;
+}
+
+async function generateFileLink() {
+    const dur    = parseInt(document.getElementById('fileLinkDuration').value) || 1;
+    const unit   = parseInt(document.getElementById('fileLinkUnit').value);
+    const maxd   = parseInt(document.getElementById('fileLinkMaxDl').value) || 0;
+    const minutes = unit > 0 ? dur * unit : 0;
+
+    try {
+        const r = await fetch('/generate-file-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: _currentLinkFile, minutes, max_downloads: maxd })
+        });
+        const d = await r.json();
+        if (d.success) {
+            document.getElementById('fileLinkUrl').value       = d.link;
+            document.getElementById('fileLinkExpiry').textContent = d.expiry;
+            document.getElementById('fileLinkMaxLabel').textContent = maxd > 0 ? maxd + ' download' + (maxd > 1 ? 's' : '') : 'Unlimited';
+            document.getElementById('fileLinkResult').style.display = 'block';
+        } else {
+            alert('❌ ' + d.message);
+        }
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+function copyGeneratedLink() {
+    const input = document.getElementById('fileLinkUrl');
+    const btn   = document.getElementById('fileLinkCopyBtn');
+    input.select(); input.setSelectionRange(0, 99999);
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => btn.textContent = '📋 Copy', 2000);
+        });
+    } else {
+        document.execCommand('copy');
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => btn.textContent = '📋 Copy', 2000);
+    }
+}
+
+function shareGeneratedLink() {
+    const url  = document.getElementById('fileLinkUrl').value;
+    const name = _currentLinkFile;
+    if (navigator.share) {
+        navigator.share({ title: name, text: 'Download: ' + name, url })
+            .catch(err => { if (err.name !== 'AbortError') showShareDialog(url, name); });
+    } else {
+        showShareDialog(url, name);
+    }
+}
+
+
 </script>
 </body>
 </html>
