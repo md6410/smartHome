@@ -38,7 +38,7 @@ RESET_SECRET = 'my-secret-reset-key-change-this'
 
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 TEMP_TOKENS = {}
-
+FILE_TOKENS = {}
 download_counter_file = os.path.join(DATA_DIR, 'download_counts.json')
 ip_log_file = os.path.join(DATA_DIR, 'downloadedIP.txt')
 
@@ -103,6 +103,28 @@ def cleanup_expired_tokens():
     expired = [t for t, data in TEMP_TOKENS.items() if datetime.now() >= data['expiry']]
     for t in expired:
         del TEMP_TOKENS[t]
+def create_file_token(filename, minutes=0, max_downloads=0):
+    token = secrets.token_urlsafe(32)
+    FILE_TOKENS[token] = {
+        'filename': filename,
+        'expiry': datetime.now() + timedelta(minutes=minutes) if minutes > 0 else None,
+        'max_downloads': max_downloads,
+        'download_count': 0,
+        'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    return token
+
+def validate_file_token(token):
+    if token not in FILE_TOKENS:
+        return None, 'Link not found or already expired'
+    td = FILE_TOKENS[token]
+    if td['expiry'] and datetime.now() > td['expiry']:
+        del FILE_TOKENS[token]
+        return None, 'Link has expired'
+    if td['max_downloads'] > 0 and td['download_count'] >= td['max_downloads']:
+        del FILE_TOKENS[token]
+        return None, 'Download limit reached'
+    return td, None
 
 
 # ── File helpers ──────────────────────────────────────────────────────────────
@@ -239,15 +261,17 @@ def index():
 
 @app.route('/files')
 def public_files():
+    if not session.get('authenticated', False):
+        return redirect(url_for('index'))
     try:
         all_items = os.listdir(PUBLIC_UPLOAD_DIR)
         file_list = [f for f in all_items
                      if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
-    except Exception as e:
-        print(f"Error listing files: {e}")
+    except:
         file_list = []
-    file_info = [{'name': f, 'size': get_file_size(f)} for f in file_list]
-    return render_template('public.html', file_list=file_info)
+    download_counts = get_download_counts()
+    file_info = [{'name': f, 'size': get_file_size(f), 'downloads': download_counts.get(f, 0)} for f in file_list]
+    return render_template('public.html', file_list=file_info, username=session.get('username', ''))
 
 
 @app.route('/login', methods=['POST'])
@@ -296,6 +320,85 @@ def change_password():
     save_users(current_users)
     return jsonify({'success': True, 'message': 'Password changed successfully'})
 
+@app.route('/delete-all', methods=['POST'])
+def delete_all_files():
+    if not session.get('authenticated', False):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        all_items = os.listdir(PUBLIC_UPLOAD_DIR)
+        files = [f for f in all_items if os.path.isfile(os.path.join(PUBLIC_UPLOAD_DIR, f)) and not f.startswith('.')]
+        for filename in files:
+            os.remove(os.path.join(PUBLIC_UPLOAD_DIR, filename))
+        # Clear download counts
+        save_download_counts({})
+        return jsonify({'success': True, 'message': f'{len(files)} file(s) deleted'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+@app.route('/generate-file-link', methods=['POST'])
+def generate_file_link():
+    if not session.get('authenticated', False):
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    data        = request.get_json()
+    filename    = data.get('filename', '').strip()
+    minutes     = max(0, int(data.get('minutes', 0)))
+    max_dl      = max(0, int(data.get('max_downloads', 0)))
+    if not filename:
+        return jsonify({'success': False, 'message': 'Filename required'}), 400
+    filepath = os.path.join(PUBLIC_UPLOAD_DIR, secure_filename(filename))
+    if not os.path.exists(filepath):
+        return jsonify({'success': False, 'message': 'File not found'}), 404
+    token    = create_file_token(filename, minutes, max_dl)
+    td       = FILE_TOKENS[token]
+    link     = request.host_url.rstrip('/') + f'/dl/{token}'
+    expiry   = td['expiry'].strftime('%Y-%m-%d %H:%M:%S') if td['expiry'] else 'Never'
+    return jsonify({'success': True, 'link': link, 'expiry': expiry})
+
+
+@app.route('/dl/<token>')
+def download_via_token(token):
+    td, error = validate_file_token(token)
+    if not td:
+        return f'''<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link Expired</title>
+<style>
+  body{{font-family:-apple-system,sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);
+       min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}}
+  .box{{background:white;border-radius:16px;padding:40px 30px;text-align:center;max-width:400px;width:100%;}}
+  .icon{{font-size:3em;margin-bottom:16px;}}
+  h2{{color:#333;margin-bottom:10px;}}
+  p{{color:#888;margin-bottom:24px;}}
+  a{{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 28px;
+     border-radius:8px;text-decoration:none;font-weight:600;}}
+</style></head>
+<body><div class="box">
+  <div class="icon">⏰</div>
+  <h2>Link Unavailable</h2>
+  <p>{error}</p>
+  <a href="/">Go Home</a>
+</div></body></html>''', 410
+
+    filename = td['filename']
+    filepath = os.path.join(PUBLIC_UPLOAD_DIR, filename)
+    if not os.path.exists(filepath):
+        return 'File not found', 404
+
+    FILE_TOKENS[token]['download_count'] += 1
+
+    client_ip = request.remote_addr
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with open(ip_log_file, 'a', encoding='utf-8') as f:
+        f.write(f"{filename},{client_ip},{request.headers.get('User-Agent','Unknown')},{timestamp}\n")
+    counts = get_download_counts()
+    counts[filename] = counts.get(filename, 0) + 1
+    save_download_counts(counts)
+
+    # Auto-delete token if download limit hit
+    if td['max_downloads'] > 0 and FILE_TOKENS.get(token, {}).get('download_count', 0) >= td['max_downloads']:
+        if token in FILE_TOKENS:
+            del FILE_TOKENS[token]
+
+    return send_from_directory(PUBLIC_UPLOAD_DIR, filename, as_attachment=True)
 
 @app.route('/reset/<secret>', methods=['GET', 'POST'])
 def reset_password(secret):
