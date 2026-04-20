@@ -13,6 +13,7 @@ echo "Installing:"
 echo "  ✓ Smart Home Control (port 5000)"
 echo "  ✓ Chat Server (port 5554)"
 echo "  ✓ Upload Server (web-controlled, port 8000)"
+echo "  ✓ Firmware Server (web-controlled, port 5001)"
 echo "  ✓ Caddy (ports 80/443)"
 echo "  ✓ All dependencies"
 echo ""
@@ -137,7 +138,7 @@ echo -e "${GREEN}✓ Python libraries installed${NC}"
 # 5. CREATE ADDITIONAL FOLDERS
 # =========================================
 echo -e "${CYAN}[5/15] 📁 Creating folders...${NC}"
-mkdir -p "$INSTALL_DIR"/{logs,uploads,instance}
+mkdir -p "$INSTALL_DIR"/{logs,uploads,uploads/firmware,instance}
 
 # =========================================
 # 6. VERIFY FILES
@@ -151,6 +152,10 @@ fi
 
 if [ ! -f "$INSTALL_DIR/uploadServer.py" ]; then
     echo -e "${YELLOW}⚠️ WARNING: uploadServer.py not found${NC}"
+fi
+
+if [ ! -f "$INSTALL_DIR/firmware_server.py" ]; then
+    echo -e "${YELLOW}⚠️ WARNING: firmware_server.py not found${NC}"
 fi
 
 if [ ! -f "$INSTALL_DIR/chatServer.py" ]; then
@@ -202,6 +207,11 @@ home.turingco.ir {
 # Upload Server Subdomain (runs when toggled from app.py)
 uploadserver.turingco.ir {
     reverse_proxy localhost:8000
+}
+
+# Firmware Server Subdomain (runs when toggled from app.py)
+firmware.turingco.ir {
+    reverse_proxy localhost:5001
 }
 
 # Chat Server Subdomain
@@ -301,6 +311,7 @@ echo -e "${CYAN}[13/15] 🔧 Setting up permissions...${NC}"
 sudo usermod -a -G gpio,dialout,i2c,spi $USERNAME
 chmod +x "$INSTALL_DIR/app.py" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/uploadServer.py" 2>/dev/null || true
+chmod +x "$INSTALL_DIR/firmware_server.py" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/chatServer.py" 2>/dev/null || true
 
 # =========================================
@@ -313,6 +324,7 @@ sudo ufw allow 80/tcp     # HTTP
 sudo ufw allow 443/tcp    # HTTPS
 sudo ufw allow 5000/tcp   # Smart Home
 sudo ufw allow 8000/tcp   # Upload
+sudo ufw allow 5001/tcp   # Firmware Server
 sudo ufw allow 5554/tcp   # Chat
 echo "y" | sudo ufw enable
 
@@ -352,6 +364,10 @@ echo -e "   ${GREEN}http://$IP_ADDR:5000${NC} (direct)"
 echo ""
 echo -e "${CYAN}📤 Upload Server:${NC}"
 echo -e "   ${GREEN}https://uploadserver.turingco.ir${NC}"
+echo -e "   ${YELLOW}Toggle ON/OFF from Smart Home dashboard${NC}"
+echo ""
+echo -e "${CYAN}🔧 Firmware Server:${NC}"
+echo -e "   ${GREEN}https://firmware.turingco.ir${NC}"
 echo -e "   ${YELLOW}Toggle ON/OFF from Smart Home dashboard${NC}"
 echo ""
 echo -e "${CYAN}💬 Chat Server:${NC}"
