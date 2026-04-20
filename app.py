@@ -732,6 +732,49 @@ def toggle_upload_server():
             "message": f"Error: {str(e)}",
             "running": upload_server_enabled
         })
+# =======================
+# FRAMWARE SERVER CONTROL
+# =======================
+firmwareserverprocess = None
+firmwareserverenabled = False
+
+@app.route('/get_firmware_server_status', methods=['GET'])
+@login_required
+def get_firmware_server_status():
+    global firmwareserverprocess, firmwareserverenabled
+    if firmwareserverprocess is not None:
+        if firmwareserverprocess.poll() is None:
+            firmwareserverenabled = True
+        else:
+            firmwareserverenabled = False
+            firmwareserverprocess = None
+    return jsonify(running=firmwareserverenabled, port=5001 if firmwareserverenabled else None)
+
+@app.route('/toggle_firmware_server', methods=['POST'])
+@login_required
+def toggle_firmware_server():
+    global firmwareserverprocess, firmwareserverenabled
+    action = request.form.get('action', 'toggle')
+    try:
+        if action == 'on' and (firmwareserverprocess is None or firmwareserverprocess.poll() is not None):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'firmware_server-3.py')
+            if not os.path.exists(path):
+                return jsonify(success=False, message='Firmware server file not found', running=False)
+            firmwareserverprocess = subprocess.Popen(
+                ['python3', path],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
+            firmwareserverenabled = True
+            return jsonify(success=True, message='Firmware server started on port 5001', running=True, port=5001)
+        elif action == 'off' and firmwareserverprocess and firmwareserverprocess.poll() is None:
+            os.killpg(os.getpgid(firmwareserverprocess.pid), signal.SIGTERM)
+            firmwareserverprocess.wait(timeout=5)
+            firmwareserverprocess = None
+            firmwareserverenabled = False
+            return jsonify(success=True, message='Firmware server stopped', running=False)
+        else:
+            return jsonify(success=False, message='Firmware server is not running', running=False)
+    except Exception as e:
+        return jsonify(success=False, message=str(e), running=firmwareserverenabled)
 
 # =======================
 # BACKGROUND THREADS
