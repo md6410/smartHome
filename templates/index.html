@@ -572,6 +572,63 @@ $(document).ready(function() {
     loadUploadServerStatus();
     setInterval(loadUploadServerStatus, 10000);
 
+
+    // Firmware Server Control
+    function loadFirmwareServerStatus() {
+        $.get("/get_firmware_server_status", function(data) {
+            updateFirmwareServerUI(data);
+        }).fail(function() {
+            console.log("Failed to get firmware server status");
+        });
+    }
+
+    function updateFirmwareServerUI(data) {
+        var isRunning = data.running;
+
+        if (isRunning) {
+            $('#firmware_server_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
+            $('#firmware_server_status_badge .status-text').text('RUNNING');
+        } else {
+            $('#firmware_server_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
+            $('#firmware_server_status_badge .status-text').text('OFF');
+        }
+
+        $('#firmware_server_status').text(isRunning ? 'RUNNING' : 'OFF')
+            .toggleClass('active', isRunning);
+        $('#firmware_server_port').text(isRunning ? '5001' : '-')
+            .toggleClass('active', isRunning);
+
+        $('#firmware_server_toggle').prop('checked', isRunning);
+        $('#open_firmware_btn').prop('disabled', !isRunning);
+        $('#firmware_admin_link').toggleClass('disabled', !isRunning);
+        $('#firmware_public_link').toggleClass('disabled', !isRunning);
+    }
+
+    $('#firmware_server_toggle').change(function() {
+        var isChecked = $(this).is(':checked');
+        var action = isChecked ? 'on' : 'off';
+
+        $('#firmware_server_toggle').prop('disabled', true);
+
+        $.post("/toggle_firmware_server", {action: action}, function(data) {
+            if (data.success) {
+                showNotification(data.message);
+                updateFirmwareServerUI(data);
+            } else {
+                showNotification('❌ ' + data.message);
+                $('#firmware_server_toggle').prop('checked', !isChecked);
+            }
+        }).fail(function() {
+            showNotification('❌ Error toggling firmware server');
+            $('#firmware_server_toggle').prop('checked', !isChecked);
+        }).always(function() {
+            $('#firmware_server_toggle').prop('disabled', false);
+        });
+    });
+
+    loadFirmwareServerStatus();
+    setInterval(loadFirmwareServerStatus, 10000);
+
     function showNotification(message) {
         if ($('#notification').length === 0) {
             $('body').append('<div id="notification"></div>');
@@ -1088,6 +1145,73 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
+
+
+<!-- Firmware Server Control -->
+    <div class="section">
+        <div class="section-title">
+            🔧 Firmware Server
+            <span class="status-badge-inline" id="firmware_server_status_badge">
+                <span class="status-dot-inline status-off"></span>
+                <span class="status-text">OFF</span>
+            </span>
+        </div>
+
+        <div class="upload-server-card">
+            <div class="status-display-panel">
+                <div class="status-item">
+                    <span class="status-label">Server Status:</span>
+                    <span class="status-value" id="firmware_server_status">OFF</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Port:</span>
+                    <span class="status-value" id="firmware_server_port">-</span>
+                </div>
+            </div>
+
+            <div class="ac-power-section">
+                <div class="power-control">
+                    <span class="power-label">Firmware Server</span>
+                    <label class="toggle-switch-large">
+                        <input type="checkbox" id="firmware_server_toggle">
+                        <span class="slider-large"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="upload-server-info">
+                <div class="info-card">
+                    <div class="info-icon">📦</div>
+                    <div class="info-content">
+                        <div class="info-title">Firmware Files</div>
+                        <div class="info-description">Manage and deploy firmware binaries</div>
+                        <a href="https://firmware.turingco.ir" target="_blank" class="info-link" id="firmware_admin_link">
+                            Open Admin Panel →
+                        </a>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">🔗</div>
+                    <div class="info-content">
+                        <div class="info-title">OTA Access</div>
+                        <div class="info-description">ESP32 firmware update endpoint</div>
+                        <a href="https://firmware.turingco.ir" target="_blank" class="info-link" id="firmware_public_link">
+                            Open Firmware Server →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <button class="action-btn" onclick="window.open('https://firmware.turingco.ir', '_blank')" id="open_firmware_btn">
+                    <span class="btn-icon">🌐</span>
+                    Open Firmware Server
+                </button>
+            </div>
+        </div>
+    </div>
+
 
 </div>
 </body>
