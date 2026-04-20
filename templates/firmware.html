@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firmware Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+     min-height:100vh;padding:16px;}
+.container{max-width:960px;margin:0 auto;}
+
+/* Header */
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #0f3460;
+        border-radius:14px;padding:24px 28px;margin-bottom:20px;
+        display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.header-left h1{font-size:1.5em;color:#e0f7fa;letter-spacing:.05em;}
+.header-left p{color:#78909c;font-size:.88em;margin-top:4px;}
+.btn-logout{background:rgba(255,100,100,.12);border:1px solid rgba(255,100,100,.3);
+            color:#ff6b6b;padding:8px 18px;border-radius:8px;cursor:pointer;
+            font-size:.85em;font-weight:600;transition:all .2s;}
+.btn-logout:hover{background:rgba(255,100,100,.2);}
+
+/* Login box */
+.login-box{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #0f3460;
+           border-radius:14px;padding:40px;max-width:420px;margin:60px auto;text-align:center;}
+.login-box h2{color:#e0f7fa;font-size:1.4em;margin-bottom:8px;}
+.login-box p{color:#78909c;font-size:.9em;margin-bottom:24px;}
+.login-box input{width:100%;padding:12px 16px;background:#0d1117;border:2px solid #1e3a5f;
+                  border-radius:8px;color:#e0f7fa;font-size:1em;margin-bottom:14px;outline:none;}
+.login-box input:focus{border-color:#00b4d8;}
+.login-box .err{color:#ff6b6b;font-size:.85em;margin-bottom:10px;min-height:1.2em;}
+
+/* Buttons */
+.btn{border:none;padding:11px 22px;border-radius:8px;cursor:pointer;font-weight:600;
+     font-size:.9em;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:linear-gradient(135deg,#00b4d8,#0077b6);color:#fff;}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,180,216,.35);}
+.btn-success{background:linear-gradient(135deg,#00c896,#009e6e);color:#fff;}
+.btn-success:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,200,150,.35);}
+.btn-danger{background:rgba(255,70,70,.12);border:1px solid rgba(255,70,70,.3);color:#ff6b6b;}
+.btn-danger:hover{background:rgba(255,70,70,.22);}
+.btn-sm{padding:6px 14px;font-size:.8em;}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;}
+.btn-full{width:100%;justify-content:center;}
+
+/* Project cards */
+.project-grid{display:grid;gap:16px;}
+.project-card{background:linear-gradient(135deg,#1a1a2e,#16213e);
+              border:1px solid #0f3460;border-radius:14px;overflow:hidden;
+              transition:border-color .2s;}
+.project-card:hover{border-color:#00b4d8;}
+.project-header{padding:18px 22px;display:flex;align-items:center;
+                justify-content:space-between;flex-wrap:wrap;gap:10px;
+                border-bottom:1px solid #0f3460;cursor:pointer;}
+.project-name{font-size:1.1em;color:#e0f7fa;font-weight:700;letter-spacing:.06em;}
+.version-badge{background:rgba(0,180,216,.12);border:1px solid rgba(0,180,216,.3);
+               color:#00b4d8;padding:4px 12px;border-radius:20px;font-size:.8em;
+               font-weight:700;letter-spacing:.05em;font-family:monospace;}
+.version-badge.none{border-color:#1e3a5f;color:#455a64;}
+.chevron{color:#455a64;font-size:.9em;transition:transform .25s;}
+.chevron.open{transform:rotate(180deg);}
+
+/* Upload panel */
+.project-body{display:none;padding:20px 22px;border-top:1px solid #0f3460;}
+.project-body.open{display:block;}
+
+.upload-zone{border:2px dashed #1e3a5f;border-radius:10px;padding:28px 16px;
+             text-align:center;cursor:pointer;transition:all .25s;
+             background:#0d1117;position:relative;margin-bottom:16px;}
+.upload-zone:hover,.upload-zone.drag{border-color:#00b4d8;background:rgba(0,180,216,.04);}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-zone .uz-icon{font-size:2em;display:block;margin-bottom:6px;}
+.upload-zone .uz-text{color:#78909c;font-size:.9em;}
+.upload-zone .uz-file{color:#00b4d8;font-weight:600;font-size:.9em;margin-top:4px;}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:520px){.form-row{grid-template-columns:1fr;}}
+.form-group label{display:block;color:#78909c;font-size:.8em;
+                  letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.form-group input,.form-group select{width:100%;padding:10px 12px;
+  background:#0d1117;border:2px solid #1e3a5f;border-radius:8px;
+  color:#e0f7fa;font-size:.9em;outline:none;transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus{border-color:#00b4d8;}
+
+/* Upload progress */
+.upload-progress{display:none;margin:10px 0;}
+.up-bar-track{background:#0d1117;border:1px solid #1e3a5f;border-radius:4px;height:8px;overflow:hidden;}
+.up-bar-fill{height:100%;background:linear-gradient(90deg,#00b4d8,#00c896);
+             width:0%;transition:width .3s;border-radius:4px;}
+.up-status{color:#78909c;font-size:.8em;margin-top:6px;}
+
+/* File table */
+.file-table{width:100%;border-collapse:collapse;margin-top:16px;}
+.file-table th{color:#455a64;font-size:.75em;text-transform:uppercase;
+               letter-spacing:.1em;padding:8px 12px;text-align:left;
+               border-bottom:1px solid #0f3460;}
+.file-table td{padding:10px 12px;border-bottom:1px solid rgba(15,52,96,.5);
+               vertical-align:middle;}
+.file-table tr:last-child td{border-bottom:none;}
+.file-table tr:hover td{background:rgba(0,180,216,.03);}
+.fname{color:#e0f7fa;font-family:monospace;font-size:.88em;word-break:break-all;}
+.fsize{color:#455a64;font-size:.82em;}
+.fdate{color:#455a64;font-size:.8em;}
+.current-tag{background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.3);
+             color:#00c896;padding:2px 8px;border-radius:10px;font-size:.72em;
+             font-weight:700;margin-left:6px;vertical-align:middle;}
+.no-files{color:#455a64;font-size:.85em;padding:16px 0;text-align:center;}
+
+/* Set-version inline */
+.set-ver-row{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.set-ver-row input{flex:1;min-width:120px;padding:8px 12px;background:#0d1117;
+                   border:2px solid #1e3a5f;border-radius:8px;color:#e0f7fa;
+                   font-size:.88em;outline:none;}
+.set-ver-row input:focus{border-color:#00b4d8;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;
+       padding:12px 20px;border-radius:10px;font-size:.88em;font-weight:600;
+       box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateY(80px);opacity:0;
+       transition:all .3s;pointer-events:none;max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{background:#00c896;color:#fff;}
+.toast.err{background:#ff6b6b;color:#fff;}
+.toast.info{background:#00b4d8;color:#fff;}
+
+/* Section label */
+.section-label{color:#455a64;font-size:.75em;text-transform:uppercase;
+               letter-spacing:.12em;margin-bottom:10px;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+{% if login_page %}
+<!-- ═══ LOGIN ══════════════════════════════════════════════════ -->
+<div class="login-box">
+  <div style="font-size:2.5em;margin-bottom:12px;">🔒</div>
+  <h2>Firmware Manager</h2>
+  <p>Admin access required</p>
+  <div class="err" id="loginErr"></div>
+  <input type="password" id="loginPw" placeholder="Admin password"
+         onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn btn-primary btn-full" onclick="doLogin()">🔑 Login</button>
+</div>
+
+{% else %}
+<!-- ═══ HEADER ═════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-left">
+    <h1>⚡ Firmware Manager</h1>
+    <p>ESP32 OTA firmware deployment &amp; version control</p>
+  </div>
+  <button class="btn-logout" onclick="location.href='/logout'">Logout</button>
+</div>
+
+<!-- ═══ PROJECT CARDS ══════════════════════════════════════════ -->
+<div class="project-grid" id="projectGrid">
+{% for proj in projects %}
+<div class="project-card" id="card-{{ proj.name }}">
+
+  <!-- Card header (click to expand) -->
+  <div class="project-header" onclick="toggleCard('{{ proj.name }}')">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span class="project-name">📦 {{ proj.name }}</span>
+      <span class="version-badge {% if proj.version == '(none)' %}none{% endif %}"
+            id="vbadge-{{ proj.name }}">
+        {{ proj.version }}
+      </span>
+      <span style="color:#455a64;font-size:.8em;">{{ proj.file_count }} file{{ 's' if proj.file_count != 1 }}</span>
+    </div>
+    <span class="chevron" id="chev-{{ proj.name }}">▼</span>
+  </div>
+
+  <!-- Card body -->
+  <div class="project-body" id="body-{{ proj.name }}">
+
+    <!-- Upload zone -->
+    <div class="section-label">Upload New Firmware</div>
+    <div class="upload-zone" id="uz-{{ proj.name }}"
+         ondragover="dzDrag(event,'{{ proj.name }}')"
+         ondragleave="dzLeave('{{ proj.name }}')"
+         ondrop="dzDrop(event,'{{ proj.name }}')">
+      <input type="file" accept=".bin,.hex"
+             onchange="fileChosen('{{ proj.name }}',this)">
+      <span class="uz-icon">📂</span>
+      <div class="uz-text">Click or drag .bin / .hex here</div>
+      <div class="uz-file" id="uzf-{{ proj.name }}"></div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Version</label>
+        <input type="text" id="ver-{{ proj.name }}"
+               placeholder="e.g. V0.02" autocomplete="off">
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn btn-success btn-full"
+                onclick="uploadFirmware('{{ proj.name }}')">
+          ⚡ Upload &amp; Set Version
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="upload-progress" id="uprog-{{ proj.name }}">
+      <div class="up-bar-track"><div class="up-bar-fill" id="uprogbar-{{ proj.name }}"></div></div>
+      <div class="up-status" id="uprogmsg-{{ proj.name }}">Uploading...</div>
+    </div>
+
+    <!-- Manually set version (point to existing file) -->
+    <div class="section-label" style="margin-top:14px;">Set Active Version</div>
+    <div class="set-ver-row">
+      <input type="text" id="setver-{{ proj.name }}"
+             placeholder="e.g. V0.01"
+             onkeydown="if(event.key==='Enter')setVersion('{{ proj.name }}')">
+      <button class="btn btn-primary btn-sm"
+              onclick="setVersion('{{ proj.name }}')">Set version.txt</button>
+    </div>
+
+    <!-- File table -->
+    <div class="section-label" style="margin-top:18px;">Files on Server</div>
+    <div id="ftable-{{ proj.name }}">
+      {% if proj.files %}
+      <table class="file-table">
+        <thead><tr>
+          <th>Filename</th><th>Size</th><th>Uploaded</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for f in proj.files %}
+        <tr id="frow-{{ proj.name }}-{{ f.name }}">
+          <td class="fname">
+            {{ f.name }}
+            {% if proj.version and proj.version in f.name %}
+            <span class="current-tag">ACTIVE</span>
+            {% endif %}
+          </td>
+          <td class="fsize">{{ (f.size / 1024)|round(1) }} KB</td>
+          <td class="fdate">{{ f.modified }}</td>
+          <td>
+            <button class="btn btn-danger btn-sm"
+                    onclick="deleteFirmware('{{ proj.name }}','{{ f.name }}')">🗑️</button>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="no-files">No firmware files uploaded yet</div>
+      {% endif %}
+    </div>
+
+  </div><!-- /project-body -->
+</div><!-- /project-card -->
+{% endfor %}
+</div><!-- /projectGrid -->
+{% endif %}
+
+</div><!-- /container -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Login ────────────────────────────────────────────────────────
+function doLogin(){
+  var pw=document.getElementById('loginPw').value;
+  var fd=new FormData(); fd.append('password',pw);
+  fetch('/login',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.success) location.href='/';
+      else document.getElementById('loginErr').textContent=d.message||'Wrong password';
+    }).catch(()=>document.getElementById('loginErr').textContent='Connection error');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+var toastTimer=null;
+function toast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='toast',3000);
+}
+
+// ── Card expand/collapse ──────────────────────────────────────────
+function toggleCard(proj){
+  var b=document.getElementById('body-'+proj);
+  var c=document.getElementById('chev-'+proj);
+  var open=b.classList.toggle('open');
+  c.classList.toggle('open',open);
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────
+var selectedFiles={};
+function dzDrag(e,proj){e.preventDefault();document.getElementById('uz-'+proj).classList.add('drag');}
+function dzLeave(proj){document.getElementById('uz-'+proj).classList.remove('drag');}
+function dzDrop(e,proj){
+  e.preventDefault(); dzLeave(proj);
+  var f=e.dataTransfer.files[0];
+  if(f) applyFile(proj,f);
+}
+function fileChosen(proj,inp){
+  if(inp.files[0]) applyFile(proj,inp.files[0]);
+}
+function applyFile(proj,f){
+  selectedFiles[proj]=f;
+  document.getElementById('uzf-'+proj).textContent='📄 '+f.name+' ('+Math.round(f.size/1024)+' KB)';
+  // Auto-guess version from filename: ESP_AP_CONTROL_V0.02.bin → V0.02
+  var m=f.name.match(/[Vv](\d+\.\d+)/);
+  if(m) document.getElementById('ver-'+proj).value='V'+m[1];
+}
+
+// ── Upload firmware ───────────────────────────────────────────────
+function uploadFirmware(proj){
+  var f=selectedFiles[proj];
+  var ver=document.getElementById('ver-'+proj).value.trim();
+
+  if(!f){toast('Select a .bin or .hex file first','err');return;}
+  if(!ver){toast('Enter a version number','err');return;}
+
+  var fd=new FormData();
+  fd.append('file',f);
+  fd.append('project',proj);
+  fd.append('version',ver);
+
+  var prog=document.getElementById('uprog-'+proj);
+  var bar=document.getElementById('uprogbar-'+proj);
+  var msg=document.getElementById('uprogmsg-'+proj);
+  prog.style.display='block'; bar.style.width='0%';
+  msg.textContent='Uploading...';
+
+  var x=new XMLHttpRequest();
+  x.upload.onprogress=function(e){
+    if(e.lengthComputable){
+      var p=(e.loaded/e.total*100).toFixed(0);
+      bar.style.width=p+'%';
+      msg.textContent='Uploading '+p+'%  ('+Math.round(e.loaded/1024)+'/'+Math.round(e.total/1024)+' KB)';
+    }
+  };
+  x.onload=function(){
+    prog.style.display='none';
+    var d=JSON.parse(x.responseText);
+    if(d.success){
+      toast('✅ '+d.filename+' uploaded — version set to '+d.version,'ok');
+      document.getElementById('vbadge-'+proj).textContent=d.version;
+      document.getElementById('vbadge-'+proj).classList.remove('none');
+      document.getElementById('ver-'+proj).value='';
+      selectedFiles[proj]=null;
+      document.getElementById('uzf-'+proj).textContent='';
+      reloadFileTable(proj);
+    } else {
+      toast('❌ '+d.message,'err');
+    }
+  };
+  x.onerror=function(){prog.style.display='none';toast('Connection error','err');};
+  x.open('POST','/upload'); x.send(fd);
+}
+
+// ── Set version only ──────────────────────────────────────────────
+function setVersion(proj){
+  var ver=document.getElementById('setver-'+proj).value.trim();
+  if(!ver){toast('Enter a version','err');return;}
+  fetch('/set-version/'+proj,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({version:ver})
+  }).then(r=>r.json()).then(d=>{
+    if(d.success){
+      toast('version.txt set to '+d.version,'ok');
+      document.getElementById('vbadge-'+proj).textContent=d.version;
+      document.getElementById('vbadge-'+proj).classList.remove('none');
+      document.getElementById('setver-'+proj).value='';
+      reloadFileTable(proj);
+    } else {
+      toast('❌ '+d.message,'err');
+    }
+  }).catch(()=>toast('Error','err'));
+}
+
+// ── Delete firmware ───────────────────────────────────────────────
+function deleteFirmware(proj,fname){
+  if(!confirm('Delete '+fname+'?')) return;
+  fetch('/delete/'+proj+'/'+encodeURIComponent(fname),{method:'POST'})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){
+        toast('Deleted '+fname,'info');
+        reloadFileTable(proj);
+      } else {
+        toast('❌ '+d.message,'err');
+      }
+    }).catch(()=>toast('Error','err'));
+}
+
+// ── Reload file table via API ─────────────────────────────────────
+function reloadFileTable(proj){
+  fetch('/api/projects').then(r=>r.json()).then(data=>{
+    var pd=data.find(p=>p.name===proj);
+    if(!pd) return;
+    var container=document.getElementById('ftable-'+proj);
+    if(!pd.files.length){
+      container.innerHTML='<div class="no-files">No firmware files uploaded yet</div>';
+      document.getElementById('vbadge-'+proj).textContent='(none)';
+      document.getElementById('vbadge-'+proj).classList.add('none');
+      return;
+    }
+    var html='<table class="file-table"><thead><tr><th>Filename</th><th>Size</th><th>Uploaded</th><th></th></tr></thead><tbody>';
+    pd.files.forEach(function(f){
+      var active=pd.version&&pd.version&&f.name.includes(pd.version);
+      html+='<tr id="frow-'+proj+'-'+f.name+'">';
+      html+='<td class="fname">'+f.name+(active?'<span class="current-tag">ACTIVE</span>':'')+'</td>';
+      html+='<td class="fsize">'+f.size_fmt+'</td>';
+      html+='<td class="fdate">'+f.modified+'</td>';
+      html+='<td><button class="btn btn-danger btn-sm" onclick="deleteFirmware(\''+proj+'\',\''+f.name+'\')">🗑️</button></td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+    container.innerHTML=html;
+    // Update version badge
+    document.getElementById('vbadge-'+proj).textContent=pd.version||'(none)';
+    if(!pd.version) document.getElementById('vbadge-'+proj).classList.add('none');
+    else document.getElementById('vbadge-'+proj).classList.remove('none');
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>
