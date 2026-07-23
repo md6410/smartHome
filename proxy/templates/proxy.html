@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>proxyctl — routing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+.site{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+.site-h{padding:13px 16px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.site-h:hover{background:var(--panel-2)}
+.site-h .nm{font-family:var(--mono);font-size:14px;color:var(--text)}
+.site-b{border-top:1px solid var(--line);padding:16px;display:none}
+.site.open .site-b{display:block}
+.drop{border:1px dashed var(--line);border-radius:var(--r);padding:26px;text-align:center;color:var(--muted);
+  transition:border-color .15s,background .15s;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--signal);background:rgba(45,212,167,.05);color:var(--text)}
+.drop b{color:var(--text);font-weight:500}
+.flist{margin-top:14px;max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r)}
+.frow{display:flex;align-items:center;gap:12px;padding:7px 12px;font-family:var(--mono);font-size:12px;
+  border-bottom:1px solid rgba(34,44,56,.55);color:var(--muted)}
+.frow:last-child{border-bottom:0}
+.frow .fn{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .x{color:var(--dim);background:none;border:0;padding:2px 6px}
+.frow .x:hover{color:var(--bad)}
+.prog{height:4px;background:var(--panel-2);border-radius:2px;overflow:hidden;margin-top:12px;display:none}
+.prog i{display:block;height:100%;background:var(--signal);width:0;transition:width .2s}
+:root{
+  --bg:#0B0E13; --panel:#131820; --panel-2:#182029; --line:#222C38;
+  --text:#DDE4ED; --muted:#78889B; --dim:#4E5C6E;
+  --signal:#2DD4A7; --tls:#8B7CF6; --warn:#F0B429; --bad:#F0554B;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --r:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--signal)}
+button{font-family:inherit;font-size:13px;cursor:pointer}
+input,select,textarea{font-family:var(--mono);font-size:13px}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+/* ---------- shell ---------- */
+.top{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+.top-in{max-width:1220px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-weight:600;letter-spacing:.02em;font-size:15px}
+.brand small{color:var(--dim);font-weight:400;margin-left:8px;letter-spacing:.06em;text-transform:uppercase;font-size:10px}
+.stats{display:flex;gap:20px;margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);flex-wrap:wrap}
+.stats b{color:var(--text);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px;background:var(--dim)}
+.dot.on{background:var(--signal);box-shadow:0 0 0 0 rgba(45,212,167,.6);animation:pulse 2.4s infinite}
+.dot.off{background:var(--bad)}
+@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(45,212,167,0)}100%{box-shadow:0 0 0 0 rgba(45,212,167,0)}}
+@media (prefers-reduced-motion:reduce){.dot.on{animation:none}}
+
+.tabs{max-width:1220px;margin:0 auto;padding:0 22px;display:flex;gap:2px}
+.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:11px 16px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+.tab:hover{color:var(--text)}
+.tab.sel{color:var(--signal);border-bottom-color:var(--signal)}
+
+main{max-width:1220px;margin:0 auto;padding:22px}
+.pane{display:none}.pane.sel{display:block}
+
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.spacer{flex:1}
+
+/* ---------- buttons ---------- */
+.btn{background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:var(--r);
+  padding:8px 14px;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--dim);background:#1D2733}
+.btn.primary{background:var(--signal);color:#062018;border-color:var(--signal);font-weight:600}
+.btn.primary:hover{background:#41E5B9}
+.btn.danger{color:var(--bad)}
+.btn.danger:hover{border-color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- the patch bay: signature element ---------- */
+.routes{display:flex;flex-direction:column;gap:10px}
+.route{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  display:grid;grid-template-columns:12px 1fr auto;align-items:stretch;overflow:hidden}
+.route .rail{background:var(--dim)}
+.route.live .rail{background:var(--signal)}
+.route.live.tls .rail{background:linear-gradient(180deg,var(--tls),var(--signal))}
+.route.off{opacity:.5}
+.route-body{padding:14px 16px;min-width:0}
+
+/* the wire */
+.wire{display:flex;align-items:center;gap:0;font-family:var(--mono);flex-wrap:wrap}
+.wire .from{font-size:15px;font-weight:500;color:var(--text);word-break:break-all}
+.wire .link{flex:0 0 auto;display:flex;align-items:center;margin:0 14px;color:var(--dim)}
+.wire .link .l{width:34px;height:1px;background:repeating-linear-gradient(90deg,var(--dim) 0 4px,transparent 4px 7px)}
+.route.live .wire .link .l{background:repeating-linear-gradient(90deg,var(--signal) 0 4px,transparent 4px 7px)}
+.wire .link .a{font-size:11px;margin-left:-2px}
+.route.live .wire .link{color:var(--signal)}
+.wire .to{font-size:15px;color:var(--muted)}
+.wire .to b{color:var(--text);font-weight:500}
+
+.meta{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  border:1px solid var(--line);color:var(--muted);padding:2px 7px;border-radius:3px;background:var(--panel-2)}
+.chip.p{color:var(--signal);border-color:rgba(45,212,167,.35)}
+.chip.t{color:var(--tls);border-color:rgba(139,124,246,.35)}
+.chip.w{color:var(--warn);border-color:rgba(240,180,41,.35)}
+.note{color:var(--dim);font-size:12px;margin-top:8px}
+.acts{display:flex;flex-direction:column;justify-content:center;gap:6px;padding:14px 16px;border-left:1px solid var(--line)}
+
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:56px 24px;text-align:center;color:var(--muted)}
+.empty h3{font-family:var(--mono);font-weight:500;color:var(--text);margin:0 0 8px;font-size:15px}
+
+/* ---------- forms ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:5px;font-family:var(--mono)}
+.in{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:var(--r);padding:8px 10px}
+.in:focus{border-color:var(--signal);outline:none}
+.hint{color:var(--dim);font-size:11.5px;margin-top:5px;font-family:var(--sans)}
+.checks{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0}
+.check{display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;cursor:pointer}
+.check input{accent-color:var(--signal);width:15px;height:15px}
+fieldset{border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:18px 0 0}
+legend{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 8px}
+
+/* ---------- modal ---------- */
+.scrim{position:fixed;inset:0;background:rgba(5,8,12,.78);display:none;z-index:40;padding:24px;overflow:auto}
+.scrim.open{display:block}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:760px;margin:24px auto}
+.modal-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.modal-h h2{margin:0;font-size:15px;font-family:var(--mono);font-weight:500}
+.modal-b{padding:20px}
+.modal-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+
+/* ---------- log table ---------- */
+.tbl-wrap{border:1px solid var(--line);border-radius:var(--r);overflow:auto;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12px;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel-2);color:var(--muted);text-align:left;font-weight:500;
+  font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--line);z-index:1}
+td{padding:7px 12px;border-bottom:1px solid rgba(34,44,56,.55);color:var(--muted)}
+tr:hover td{background:var(--panel-2)}
+td.k{color:var(--text)}
+.st{font-weight:600}
+.st.s2{color:var(--signal)}.st.s3{color:var(--tls)}.st.s4{color:var(--warn)}.st.s5{color:var(--bad)}
+td.path{max-width:320px;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- gauge ---------- */
+.gauge{height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-top:8px}
+.gauge i{display:block;height:100%;background:var(--signal);transition:width .4s}
+.gauge i.hi{background:var(--warn)}.gauge i.full{background:var(--bad)}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;right:22px;bottom:22px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:420px}
+.toast{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--signal);
+  border-radius:var(--r);padding:11px 15px;font-size:13px;white-space:pre-wrap;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+.toast.err{border-left-color:var(--bad)}
+pre.conf{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:14px;
+  font-family:var(--mono);font-size:12px;color:var(--muted);overflow:auto;max-height:60vh;white-space:pre}
+.banner{background:rgba(240,180,41,.09);border:1px solid rgba(240,180,41,.3);color:var(--warn);
+  border-radius:var(--r);padding:10px 14px;margin-bottom:18px;font-family:var(--mono);font-size:12px}
+@media(max-width:720px){
+  .route{grid-template-columns:8px 1fr}
+  .acts{border-left:0;border-top:1px solid var(--line);flex-direction:row;grid-column:1/-1;padding:10px 14px}
+  .wire .link{margin:0 10px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">proxyctl<small>reverse proxy</small></div>
+    <div class="stats">
+      <span><span id="d-nginx" class="dot"></span><span id="s-nginx">checking…</span></span>
+      <span>routes <b id="s-routes">—</b></span>
+      <span>log <b id="s-log">—</b></span>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab sel" data-pane="routes">Routes</button>
+    <button class="tab" data-pane="sites">Websites</button>
+    <button class="tab" data-pane="log">Request log</button>
+    <button class="tab" data-pane="settings">Settings</button>
+  </nav>
+</header>
+
+<main>
+  {% if dry_run %}
+  <div class="banner">Dry run — the Caddyfile is written to ./dryrun/ and Caddy is never touched.</div>
+  {% endif %}
+
+  <!-- ============ ROUTES ============ -->
+  <section class="pane sel" id="pane-routes">
+    <div class="bar">
+      <button class="btn primary" onclick="openForm()">Add route</button>
+      <button class="btn" onclick="testConf()">Test config</button>
+      <button class="btn" onclick="showCaddyfile()">View Caddyfile</button>
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="applyConf()">Apply &amp; reload Caddy</button>
+    </div>
+    <div class="routes" id="routes"></div>
+  </section>
+
+  <!-- ============ SITES ============ -->
+  <section class="pane" id="pane-sites">
+    <div class="bar">
+      <button class="btn primary" onclick="newFolder()">New website folder</button>
+      <div class="spacer"></div>
+      <span id="wr-label" style="font-family:var(--mono);font-size:11.5px;color:var(--dim)"></span>
+    </div>
+    <div id="sites"></div>
+  </section>
+
+  <!-- ============ LOG ============ -->
+  <section class="pane" id="pane-log">
+    <div class="bar">
+      <input class="in" id="f-q" style="max-width:220px" placeholder="search…" oninput="debLogs()">
+      <input class="in" id="f-domain" style="max-width:180px" placeholder="domain" oninput="debLogs()">
+      <input class="in" id="f-ip" style="max-width:150px" placeholder="source IP" oninput="debLogs()">
+      <select class="in" id="f-status" style="max-width:130px" onchange="loadLogs()">
+        <option value="">all status</option>
+        <option value="2">2xx ok</option><option value="3">3xx redirect</option>
+        <option value="4">4xx client</option><option value="5">5xx server</option>
+      </select>
+      <select class="in" id="f-limit" style="max-width:110px" onchange="loadLogs()">
+        <option>100</option><option selected>200</option><option>500</option><option>1000</option>
+      </select>
+      <label class="check" style="text-transform:none;letter-spacing:0;margin:0">
+        <input type="checkbox" id="f-live" checked> live
+      </label>
+      <div class="spacer"></div>
+      <button class="btn sm" onclick="exportLogs()">Export CSV</button>
+      <button class="btn sm danger" onclick="clearLogs()">Clear log</button>
+    </div>
+    <div class="tbl-wrap" style="max-height:66vh">
+      <table>
+        <thead><tr>
+          <th>Time</th><th>Source IP</th><th>Domain</th><th>Port</th><th>Scheme</th>
+          <th>Method</th><th>Path</th><th>Status</th><th>Bytes</th><th>ms</th>
+          <th>Upstream</th><th>User agent</th><th>Referer</th><th>X-Forwarded-For</th>
+        </tr></thead>
+        <tbody id="logs"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="pane" id="pane-settings">
+    <fieldset style="margin-top:0">
+      <legend>Log size cap</legend>
+      <div class="grid">
+        <div>
+          <label for="set-max">Maximum log size (MB)</label>
+          <input class="in" id="set-max" type="number" min="1" max="10000">
+          <div class="hint">Past this size the oldest requests are dropped.</div>
+        </div>
+        <div>
+          <label for="set-keep">Keep on trim (%)</label>
+          <input class="in" id="set-keep" type="number" min="10" max="90">
+          <div class="hint">How much of the newest data survives a trim.</div>
+        </div>
+        <div>
+          <label for="set-int">Check every (seconds)</label>
+          <input class="in" id="set-int" type="number" min="10" max="86400">
+        </div>
+      </div>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="set-en"> Enforce the size cap</label>
+      </div>
+      <div style="margin-top:6px">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--muted)" id="usage">—</div>
+        <div class="gauge"><i id="usage-bar" style="width:0"></i></div>
+      </div>
+      <div style="margin-top:18px"><button class="btn primary" onclick="saveSettings()">Save settings</button></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Certificates and fallback</legend>
+      <div class="grid">
+        <div style="grid-column:1/-1">
+          <label for="set-wr">Website folder location</label>
+          <input class="in" id="set-wr" placeholder="/var/www">
+          <div class="hint">Where new website folders are created. Use a full path. It is made for you if it does not exist, and existing folders are not moved.</div>
+        </div>
+        <div>
+          <label for="set-email">Let's Encrypt email</label>
+          <input class="in" id="set-email" placeholder="you@turingco.ir">
+          <div class="hint">Where expiry warnings go. Optional but recommended.</div>
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="set-tp">Trusted proxy ranges</label>
+          <input class="in" id="set-tp" placeholder="94.101.182.0/23, 185.143.232.0/22">
+          <div class="hint">If a CDN sits in front, the log shows its servers instead of real visitors. List the CDN's IP ranges here and the real address is used instead. Leave empty when traffic reaches the Pi directly.</div>
+        </div>
+        <div>
+          <label for="set-fb">Fallback port</label>
+          <input class="in" id="set-fb" placeholder="5000">
+          <div class="hint">Handles requests with no matching domain, such as browsing the Pi by IP. Leave empty to turn off.</div>
+        </div>
+      </div>
+      <div style="margin-top:18px"><button class="btn primary" onclick="saveSettings()">Save settings</button></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Log file</legend>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--muted)">{{ access_log }}<br>{{ caddyfile }}</div>
+      <div class="hint">Caddy writes one JSON object per request. proxyctl owns the Caddyfile entirely.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Recent changes</legend>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Time</th><th>Action</th><th>Detail</th></tr></thead>
+        <tbody id="audit"></tbody>
+      </table></div>
+    </fieldset>
+  </section>
+</main>
+
+<!-- ============ FORM MODAL ============ -->
+<div class="scrim" id="scrim" onclick="if(event.target===this)closeForm()">
+  <div class="modal">
+    <div class="modal-h"><h2 id="form-title">Add route</h2></div>
+    <div class="modal-b">
+      <input type="hidden" id="r-id">
+      <div class="grid">
+        <div style="grid-column:1/-1">
+          <label for="r-domain">Incoming domain</label>
+          <input class="in" id="r-domain" placeholder="chat.example.com">
+          <div class="hint">The hostname visitors type. <code>*.example.com</code> matches subdomains.</div>
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="r-type">Where it goes</label>
+          <select class="in" id="r-type" onchange="typeToggle()">
+            <option value="proxy">A service running on a port</option>
+            <option value="static">A website folder on this Pi</option>
+          </select>
+        </div>
+        <div class="tf proxy-only">
+          <label for="r-host">Send to host</label>
+          <input class="in" id="r-host" value="127.0.0.1">
+        </div>
+        <div class="tf proxy-only">
+          <label for="r-port">Send to port</label>
+          <input class="in" id="r-port" type="number" placeholder="5000">
+          <div class="hint">The port your service listens on locally.</div>
+        </div>
+        <div class="tf static-only" style="grid-column:1/-1;display:none">
+          <label for="r-root">Website folder</label>
+          <div style="display:flex;gap:8px">
+            <select class="in" id="r-root" style="flex:1"></select>
+            <button class="btn sm" type="button" onclick="newFolder()">New folder</button>
+          </div>
+          <div class="hint" id="root-hint">Put your site's files in this folder. It needs an index.html.</div>
+        </div>
+        <div class="tf static-only" style="display:none">
+          <label for="r-index">Entry files</label>
+          <input class="in" id="r-index" value="index.html index.htm">
+          <div class="hint">Tried in order when a folder is requested.</div>
+        </div>
+        <div>
+          <label for="r-extra">Also listen on</label>
+          <input class="in" id="r-extra" placeholder="8080, 8081">
+          <div class="hint">Optional extra ports besides 80.</div>
+        </div>
+        <div>
+          <label for="r-body">Max upload (MB)</label>
+          <input class="in" id="r-body" type="number" value="64">
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="r-allow">Restrict to IPs</label>
+          <input class="in" id="r-allow" placeholder="192.168.1.0/24, 10.0.0.5">
+          <div class="hint">Leave empty to allow everyone.</div>
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="r-note">Note</label>
+          <input class="in" id="r-note" placeholder="smartHome chat server">
+        </div>
+      </div>
+
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="r-http" checked> Listen on port 80</label>
+        <label class="check"><input type="checkbox" id="r-https" checked onchange="tlsToggle()"> Listen on port 443 (HTTPS)</label>
+        <label class="check"><input type="checkbox" id="r-force" checked> Redirect 80 → 443</label>
+        <label class="check tf proxy-only"><input type="checkbox" id="r-ws" checked> Allow WebSockets</label>
+        <label class="check tf static-only" style="display:none"><input type="checkbox" id="r-browse"> Show a file list when there is no index</label>
+        <label class="check tf static-only" style="display:none"><input type="checkbox" id="r-spa"> Single-page app (send unknown paths to index.html)</label>
+        <label class="check"><input type="checkbox" id="r-en" checked> Enabled</label>
+      </div>
+
+      <fieldset id="tls-fields" style="display:none">
+        <legend>Certificate</legend>
+        <div class="grid">
+          <div style="grid-column:1/-1">
+            <label for="r-tls">How to get the certificate</label>
+            <select class="in" id="r-tls" onchange="certToggle()">
+              <option value="auto">Automatic — Let's Encrypt</option>
+              <option value="internal">Self-signed — local network only</option>
+              <option value="custom">Use my own certificate files</option>
+            </select>
+            <div class="hint" id="tls-hint">Caddy requests and renews the certificate itself. Needs port 80 reachable from the internet.</div>
+          </div>
+        </div>
+        <div class="grid" id="cert-fields" style="display:none;margin-top:14px">
+          <div>
+            <label for="r-cert">Certificate path</label>
+            <input class="in" id="r-cert" placeholder="/etc/ssl/certs/turingco.pem">
+          </div>
+          <div>
+            <label for="r-key">Private key path</label>
+            <input class="in" id="r-key" placeholder="/etc/ssl/private/turingco.key">
+          </div>
+        </div>
+      </fieldset>
+    </div>
+    <div class="modal-f">
+      <button class="btn" onclick="closeForm()">Cancel</button>
+      <button class="btn primary" id="save-btn" onclick="saveRoute()">Save route</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIG PREVIEW MODAL ============ -->
+<div class="scrim" id="scrim2" onclick="if(event.target===this)close2()">
+  <div class="modal">
+    <div class="modal-h"><h2 id="conf-title">Generated config</h2></div>
+    <div class="modal-b"><pre class="conf" id="conf-body"></pre></div>
+    <div class="modal-f"><button class="btn" onclick="close2()">Close</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let ROUTES = [], logTimer = null, debTimer = null;
+
+function toast(msg, err){
+  const t = document.createElement('div');
+  t.className = 'toast' + (err ? ' err' : '');
+  t.textContent = msg;
+  $('#toast').appendChild(t);
+  setTimeout(() => t.remove(), err ? 9000 : 4000);
+}
+function bytes(n){
+  if(n < 1024) return n + ' B';
+  if(n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  if(n < 1073741824) return (n/1048576).toFixed(1) + ' MB';
+  return (n/1073741824).toFixed(2) + ' GB';
+}
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(url, opts){
+  const r = await fetch(url, opts);
+  let d = null;
+  try { d = await r.json(); } catch(e) {}
+  if(!r.ok) throw new Error((d && (d.error || d.message)) || ('Request failed: ' + r.status));
+  return d;
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('sel'));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('sel'));
+  b.classList.add('sel');
+  $('#pane-' + b.dataset.pane).classList.add('sel');
+  if(b.dataset.pane === 'log') loadLogs();
+  if(b.dataset.pane === 'sites') loadSites();
+  if(b.dataset.pane === 'settings'){ loadSettings(); loadAudit(); }
+});
+
+/* ---------- status ---------- */
+async function loadStatus(){
+  try{
+    const s = await api('/api/status');
+    $('#d-nginx').className = 'dot ' + (s.nginx_running ? 'on' : 'off');
+    $('#s-nginx').textContent = s.nginx_running ? 'caddy active' : 'caddy ' + s.nginx_state;
+    $('#s-routes').textContent = s.routes_live + ' / ' + s.routes_total;
+    $('#s-log').textContent = bytes(s.log_bytes);
+    const pct = s.log_cap_bytes ? Math.min(100, s.log_bytes / s.log_cap_bytes * 100) : 0;
+    $('#usage').textContent = bytes(s.log_bytes) + ' of ' + bytes(s.log_cap_bytes) + ' used (' + pct.toFixed(1) + '%)';
+    const bar = $('#usage-bar');
+    bar.style.width = pct + '%';
+    bar.className = pct > 95 ? 'full' : pct > 75 ? 'hi' : '';
+  }catch(e){}
+}
+
+/* ---------- routes ---------- */
+async function loadRoutes(){
+  ROUTES = await api('/api/routes');
+  const box = $('#routes');
+  if(!ROUTES.length){
+    box.innerHTML = `<div class="empty"><h3>No routes yet</h3>
+      Add one to point a domain at a port on this Pi.</div>`;
+    return;
+  }
+  box.innerHTML = ROUTES.map(r => {
+    const ports = [];
+    if(r.listen_http) ports.push('80');
+    if(r.extra_ports) ports.push(...r.extra_ports.split(','));
+    if(r.listen_https) ports.push('443');
+    return `<div class="route ${r.enabled ? 'live' : 'off'} ${r.listen_https ? 'tls' : ''}">
+      <div class="rail"></div>
+      <div class="route-body">
+        <div class="wire">
+          <span class="from">${esc(r.domain)}</span>
+          <span class="link"><span class="l"></span><span class="a">&#9658;</span></span>
+          <span class="to">${r.route_type === 'static'
+            ? '<b>' + esc((r.root_dir||'').split('/').pop()) + '</b>/'
+            : esc(r.target_host) + ':<b>' + r.target_port + '</b>'}</span>
+        </div>
+        <div class="meta">
+          ${ports.map(p => `<span class="chip ${p === '443' ? 't' : 'p'}">:${esc(p)}</span>`).join('')}
+          ${r.force_https ? '<span class="chip t">80&rarr;443</span>' : ''}
+          ${r.listen_https ? `<span class="chip t">tls ${esc(r.tls_mode)}</span>` : ''}
+          ${r.route_type === 'static' ? '<span class="chip p">folder</span>' : (r.websockets ? '<span class="chip">ws</span>' : '')}
+          ${r.spa ? '<span class="chip">spa</span>' : ''}
+          ${r.browse ? '<span class="chip">file list</span>' : ''}
+          ${r.allow_cidrs ? `<span class="chip w">restricted</span>` : ''}
+          <span class="chip">${r.max_body_mb}mb body</span>
+          ${!r.enabled ? '<span class="chip w">disabled</span>' : ''}
+        </div>
+        ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
+      </div>
+      <div class="acts">
+        <button class="btn sm" onclick="openForm(${r.id})">Edit</button>
+        <button class="btn sm" onclick="toggle(${r.id})">${r.enabled ? 'Disable' : 'Enable'}</button>
+        <button class="btn sm" onclick="preview(${r.id})">Config</button>
+        <button class="btn sm danger" onclick="del(${r.id},'${esc(r.domain)}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let FOLDERS = [];
+async function loadFolders(sel){
+  try{
+    const d = await api('/api/folders');
+    FOLDERS = d.folders;
+    const cur = sel || $('#r-root').value;
+    $('#r-root').innerHTML = FOLDERS.length
+      ? FOLDERS.map(f => `<option value="${esc(f.path)}">${esc(f.name)} — ${f.file_count} file${f.file_count===1?'':'s'}${f.has_index ? '' : ' (no index.html)'}</option>`).join('')
+      : '<option value="">No folders yet — create one</option>';
+    if(cur) $('#r-root').value = cur;
+  }catch(e){ toast(e.message, true); }
+}
+async function newFolder(){
+  const name = prompt('Name for the website folder:');
+  if(!name) return;
+  try{
+    const d = await api('/api/folders', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name})});
+    toast('Created ' + name + '. Upload your website files into it.');
+    if($('#pane-sites').classList.contains('sel')){
+      await loadSites();
+      const el = $('#site-' + name); if(el){ el.classList.add('open'); loadFiles(name); }
+    } else { await loadFolders(d.path); }
+  }catch(e){ toast(e.message, true); }
+}
+function typeToggle(){
+  const st = $('#r-type').value === 'static';
+  document.querySelectorAll('.proxy-only').forEach(e => e.style.display = st ? 'none' : '');
+  document.querySelectorAll('.static-only').forEach(e => e.style.display = st ? '' : 'none');
+  if(st) loadFolders();
+}
+function tlsToggle(){ $('#tls-fields').style.display = $('#r-https').checked ? 'block' : 'none'; certToggle(); }
+function certToggle(){
+  const m = $('#r-tls').value;
+  $('#cert-fields').style.display = m === 'custom' ? 'grid' : 'none';
+  $('#tls-hint').textContent = m === 'auto'
+    ? "Caddy requests and renews the certificate itself. Needs port 80 reachable from the internet."
+    : m === 'internal'
+    ? "A self-signed certificate. Browsers warn unless you trust it, so use this on the LAN only."
+    : "Point at certificate files you already have on the Pi.";
+}
+
+function openForm(id){
+  const r = id ? ROUTES.find(x => x.id === id) : null;
+  $('#form-title').textContent = r ? 'Edit route' : 'Add route';
+  $('#r-id').value    = r ? r.id : '';
+  $('#r-domain').value= r ? r.domain : '';
+  $('#r-type').value  = r ? (r.route_type || 'proxy') : 'proxy';
+  $('#r-host').value  = r ? r.target_host : '127.0.0.1';
+  $('#r-index').value = r ? (r.index_files || 'index.html index.htm') : 'index.html index.htm';
+  $('#r-browse').checked = r ? !!r.browse : false;
+  $('#r-spa').checked = r ? !!r.spa : false;
+  typeToggle();
+  if(r && r.route_type === 'static') loadFolders(r.root_dir);
+  $('#r-port').value  = r && r.target_port ? r.target_port : '';
+  $('#r-extra').value = r ? r.extra_ports : '';
+  $('#r-body').value  = r ? r.max_body_mb : 64;
+  $('#r-allow').value = r ? r.allow_cidrs : '';
+  $('#r-note').value  = r ? r.note : '';
+  $('#r-tls').value   = r ? (r.tls_mode || 'auto') : 'auto';
+  $('#r-cert').value  = r ? r.ssl_cert : '';
+  $('#r-key').value   = r ? r.ssl_key : '';
+  $('#r-http').checked  = r ? !!r.listen_http : true;
+  $('#r-https').checked = r ? !!r.listen_https : true;
+  $('#r-force').checked = r ? !!r.force_https : true;
+  $('#r-ws').checked    = r ? !!r.websockets : true;
+  $('#r-en').checked    = r ? !!r.enabled : true;
+  tlsToggle();
+  $('#scrim').classList.add('open');
+  $('#r-domain').focus();
+}
+function closeForm(){ $('#scrim').classList.remove('open'); }
+function close2(){ $('#scrim2').classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeForm(); close2(); }});
+
+async function saveRoute(){
+  const id = $('#r-id').value;
+  const body = {
+    domain: $('#r-domain').value, route_type: $('#r-type').value,
+    root_dir: $('#r-root').value, index_files: $('#r-index').value,
+    browse: $('#r-browse').checked, spa: $('#r-spa').checked,
+    target_host: $('#r-host').value,
+    target_port: $('#r-port').value, extra_ports: $('#r-extra').value,
+    max_body_mb: $('#r-body').value, allow_cidrs: $('#r-allow').value,
+    note: $('#r-note').value, ssl_cert: $('#r-cert').value, ssl_key: $('#r-key').value,
+    listen_http: $('#r-http').checked, listen_https: $('#r-https').checked,
+    force_https: $('#r-force').checked, websockets: $('#r-ws').checked,
+    enabled: $('#r-en').checked
+  };
+  $('#save-btn').disabled = true;
+  try{
+    await api(id ? '/api/routes/' + id : '/api/routes', {
+      method: id ? 'PUT' : 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    closeForm(); await loadRoutes(); loadStatus();
+    toast('Route saved. Apply to make it live.');
+  }catch(e){ toast(e.message, true); }
+  finally{ $('#save-btn').disabled = false; }
+}
+
+async function toggle(id){
+  try{ await api('/api/routes/' + id + '/toggle', {method: 'POST'}); await loadRoutes(); loadStatus(); }
+  catch(e){ toast(e.message, true); }
+}
+async function del(id, domain){
+  if(!confirm('Delete the route for ' + domain + '?')) return;
+  try{ await api('/api/routes/' + id, {method: 'DELETE'}); await loadRoutes(); loadStatus();
+       toast('Route deleted. Apply to update nginx.'); }
+  catch(e){ toast(e.message, true); }
+}
+async function showCaddyfile(){
+  try{
+    const d = await api('/api/caddyfile');
+    $('#conf-title').textContent = 'Full Caddyfile';
+    $('#conf-body').textContent = d.conf;
+    $('#scrim2').classList.add('open');
+  }catch(e){ toast(e.message, true); }
+}
+async function preview(id){
+  try{
+    const d = await api('/api/routes/' + id + '/preview');
+    $('#conf-title').textContent = 'Generated site block';
+    $('#conf-body').textContent = d.conf;
+    $('#scrim2').classList.add('open');
+  }catch(e){ toast(e.message, true); }
+}
+async function applyConf(){
+  try{ const d = await api('/api/apply', {method: 'POST'}); toast(d.message); loadStatus(); }
+  catch(e){ toast(e.message, true); }
+}
+async function testConf(){
+  try{ const d = await api('/api/test', {method: 'POST'}); toast(d.message, !d.ok); }
+  catch(e){ toast(e.message, true); }
+}
+
+/* ---------- websites ---------- */
+async function loadSites(){
+  try{
+    const d = await api('/api/folders');
+    FOLDERS = d.folders;
+    $('#wr-label').textContent = d.webroot;
+    const box = $('#sites');
+    if(!FOLDERS.length){
+      box.innerHTML = `<div class="empty"><h3>No website folders yet</h3>
+        Create one, upload your files, then point a domain at it from the Routes tab.</div>`;
+      return;
+    }
+    box.innerHTML = FOLDERS.map(f => `<div class="site" id="site-${esc(f.name)}">
+      <div class="site-h" onclick="toggleSite('${esc(f.name)}')">
+        <span class="nm">${esc(f.name)}/</span>
+        <span class="chip ${f.has_index ? 'p' : 'w'}">${f.has_index ? 'ready' : 'no index.html'}</span>
+        <span class="chip">${f.file_count} file${f.file_count===1?'':'s'}</span>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn sm danger" onclick="event.stopPropagation();delFolder('${esc(f.name)}')">Delete</button>
+      </div>
+      <div class="site-b">
+        <div class="drop" id="drop-${esc(f.name)}">
+          <b>Drop files here</b> or click to choose<br>
+          <span style="font-size:12px">A .zip is unpacked automatically. Folders keep their structure.</span>
+        </div>
+        <div class="prog" id="prog-${esc(f.name)}"><i></i></div>
+        <div class="flist" id="files-${esc(f.name)}"></div>
+      </div>
+    </div>`).join('');
+    FOLDERS.forEach(f => wireDrop(f.name));
+  }catch(e){ toast(e.message, true); }
+}
+
+function toggleSite(name){
+  const el = $('#site-' + name);
+  el.classList.toggle('open');
+  if(el.classList.contains('open')) loadFiles(name);
+}
+
+function wireDrop(name){
+  const d = $('#drop-' + name);
+  d.onclick = () => {
+    const i = document.createElement('input');
+    i.type = 'file'; i.multiple = true;
+    i.onchange = () => upload(name, i.files);
+    i.click();
+  };
+  d.ondragover = e => { e.preventDefault(); d.classList.add('over'); };
+  d.ondragleave = () => d.classList.remove('over');
+  d.ondrop = e => {
+    e.preventDefault(); d.classList.remove('over');
+    upload(name, e.dataTransfer.files);
+  };
+}
+
+function upload(name, fileList){
+  if(!fileList || !fileList.length) return;
+  const fd = new FormData();
+  for(const f of fileList) fd.append('files', f, f.webkitRelativePath || f.name);
+  const bar = $('#prog-' + name), inner = bar.querySelector('i');
+  bar.style.display = 'block'; inner.style.width = '0';
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/folders/' + encodeURIComponent(name) + '/upload');
+  xhr.upload.onprogress = e => {
+    if(e.lengthComputable) inner.style.width = (e.loaded / e.total * 100) + '%';
+  };
+  xhr.onload = () => {
+    bar.style.display = 'none';
+    let d = {};
+    try{ d = JSON.parse(xhr.responseText); }catch(err){}
+    if(xhr.status === 200 && d.ok){
+      toast(d.message);
+      loadFiles(name);
+      loadSites().then(() => { const el = $('#site-' + name); if(el){ el.classList.add('open'); loadFiles(name); } });
+    } else {
+      toast(d.error || (xhr.status === 413 ? 'That upload is too large (limit 512 MB).' : 'Upload failed.'), true);
+    }
+  };
+  xhr.onerror = () => { bar.style.display = 'none'; toast('Upload failed.', true); };
+  xhr.send(fd);
+}
+
+async function loadFiles(name){
+  try{
+    const d = await api('/api/folders/' + encodeURIComponent(name) + '/files');
+    $('#files-' + name).innerHTML = d.files.length
+      ? d.files.map(f => `<div class="frow">
+          <span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>
+          <span>${bytes(f.size)}</span>
+          <button class="x" onclick="delFile('${esc(name)}','${esc(f.name)}')" title="Delete">&times;</button>
+        </div>`).join('')
+      : `<div class="frow"><span class="fn" style="color:var(--dim)">Empty. Upload your website files above.</span></div>`;
+  }catch(e){ toast(e.message, true); }
+}
+
+async function delFile(name, file){
+  if(!confirm('Delete ' + file + '?')) return;
+  try{
+    await api('/api/folders/' + encodeURIComponent(name) + '/files?file=' + encodeURIComponent(file),
+              {method:'DELETE'});
+    loadFiles(name); loadSites().then(() => $('#site-' + name).classList.add('open'));
+  }catch(e){ toast(e.message, true); }
+}
+
+async function delFolder(name){
+  if(!confirm('Delete the folder ' + name + ' and everything in it?')) return;
+  try{ await api('/api/folders/' + encodeURIComponent(name), {method:'DELETE'}); loadSites(); toast('Folder deleted.'); }
+  catch(e){ toast(e.message, true); }
+}
+
+/* ---------- logs ---------- */
+function debLogs(){ clearTimeout(debTimer); debTimer = setTimeout(loadLogs, 300); }
+function logQuery(){
+  return new URLSearchParams({
+    limit: $('#f-limit').value, q: $('#f-q').value, domain: $('#f-domain').value,
+    source_ip: $('#f-ip').value, status_class: $('#f-status').value
+  }).toString();
+}
+async function loadLogs(){
+  try{
+    const rows = await api('/api/logs?' + logQuery());
+    $('#logs').innerHTML = rows.length ? rows.map(r => `<tr>
+      <td>${esc((r.time || '').replace('T', ' ').slice(0, 19))}</td>
+      <td class="k">${esc(r.source_ip)}</td>
+      <td class="k">${esc(r.domain)}</td>
+      <td>${esc(r.server_port)}</td>
+      <td>${esc(r.scheme)}</td>
+      <td>${esc(r.method)}</td>
+      <td class="path" title="${esc(r.path)}">${esc(r.path)}</td>
+      <td class="st s${String(r.status)[0]}">${r.status}</td>
+      <td>${bytes(r.bytes_sent)}</td>
+      <td>${Math.round(parseFloat(r.request_time || 0) * 1000)}</td>
+      <td>${esc(r.upstream)}</td>
+      <td class="path" title="${esc(r.user_agent)}">${esc(r.user_agent)}</td>
+      <td class="path" title="${esc(r.referer)}">${esc(r.referer)}</td>
+      <td>${esc(r.xff)}</td></tr>`).join('')
+      : `<tr><td colspan="14" style="padding:34px;text-align:center">No requests match these filters yet.</td></tr>`;
+  }catch(e){}
+}
+function exportLogs(){ window.location = '/api/logs/export?' + logQuery(); }
+async function clearLogs(){
+  if(!confirm('Delete every logged request? This cannot be undone.')) return;
+  try{ const d = await api('/api/logs/clear', {method: 'POST'}); toast(d.message); loadLogs(); loadStatus(); }
+  catch(e){ toast(e.message, true); }
+}
+
+/* ---------- settings ---------- */
+async function loadSettings(){
+  const s = await api('/api/settings');
+  $('#set-max').value = s.log_max_mb;
+  $('#set-keep').value = s.log_keep_percent;
+  $('#set-int').value = s.trim_interval_sec;
+  $('#set-en').checked = s.log_enabled === '1';
+  $('#set-email').value = s.acme_email || '';
+  $('#set-fb').value = s.fallback_port || '';
+  $('#set-tp').value = s.trusted_proxies || '';
+  $('#set-wr').value = s.webroot || '';
+}
+async function saveSettings(){
+  try{
+    const before = (await api('/api/settings')).webroot;
+    await api('/api/settings', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        log_max_mb: $('#set-max').value, log_keep_percent: $('#set-keep').value,
+        trim_interval_sec: $('#set-int').value, log_enabled: $('#set-en').checked ? '1' : '0',
+        acme_email: $('#set-email').value, fallback_port: $('#set-fb').value,
+        trusted_proxies: $('#set-tp').value, webroot: $('#set-wr').value
+      })
+    });
+    const after = (await api('/api/settings')).webroot;
+    toast(before !== after ? 'Settings saved. New website folders go to ' + after + '.' : 'Settings saved.');
+    loadStatus();
+    if($('#pane-sites').classList.contains('sel')) loadSites();
+  }catch(e){ toast(e.message, true); }
+}
+async function loadAudit(){
+  const rows = await api('/api/audit');
+  $('#audit').innerHTML = rows.map(r =>
+    `<tr><td>${esc(r.ts.replace('T', ' '))}</td><td class="k">${esc(r.action)}</td><td>${esc(r.detail)}</td></tr>`
+  ).join('') || `<tr><td colspan="3" style="padding:20px">Nothing yet.</td></tr>`;
+}
+
+/* ---------- boot ---------- */
+loadRoutes().catch(e => toast(e.message, true));
+loadStatus();
+setInterval(loadStatus, 5000);
+setInterval(() => { if($('#pane-log').classList.contains('sel') && $('#f-live').checked) loadLogs(); }, 3000);
+</script>
+</body>
+</html>
