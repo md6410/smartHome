@@ -25,6 +25,10 @@ set -Eeuo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; CYAN='\033[0;36m'; MAGENTA='\033[0;35m'; NC='\033[0m'
 
+# apt must never stop to ask a question - there is no one watching it here
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+
 say()  { echo -e "${CYAN}$*${NC}"; }
 ok()   { echo -e "${GREEN}  ok  $*${NC}"; }
 warn() { echo -e "${YELLOW}  !   $*${NC}"; }
@@ -47,9 +51,19 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$STATE_DIR/backup-$STAMP"
 MANIFEST="$STATE_DIR/manifest"
 
-for f in app.py templates/index.html proxy/proxy_manager.py proxy/templates/proxy.html; do
-    [[ -f "$SRC_DIR/$f" ]] || die "Missing $f - clone the full repository."
+MISSING=()
+for f in app.py templates/index.html requirements.txt uninstall.sh \
+         proxy/proxy_manager.py proxy/templates/proxy.html; do
+    [[ -f "$SRC_DIR/$f" ]] || MISSING+=("$f")
 done
+if (( ${#MISSING[@]} )); then
+    echo -e "${RED}Missing from $SRC_DIR:${NC}" >&2
+    printf '  %s\n' "${MISSING[@]}" >&2
+    echo >&2
+    echo "Copy the whole project across, or clone it:" >&2
+    echo "  git clone https://github.com/md6410/smartHome.git" >&2
+    exit 1
+fi
 
 echo -e "${MAGENTA}smartHome - complete installation${NC}"
 echo "======================================"
@@ -108,26 +122,43 @@ record dir "$STATE_DIR"
 # 1. System packages
 # ---------------------------------------------------------------------
 say "[1/12] System packages"
-sudo apt-get update -y -qq
-sudo apt-get install -y -qq \
+echo "  This is the long step - build tools and image libraries."
+echo "  On a slow connection it can take 10-20 minutes. Output follows."
+
+sudo apt-get update -y
+sudo apt-get install -y \
     python3 python3-pip python3-dev \
     git curl wget net-tools ufw dnsutils acl \
     build-essential pkg-config \
     libjpeg-dev libpng-dev libtiff-dev \
     libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
     debian-keyring debian-archive-keyring apt-transport-https
-sudo apt-get install -y -qq python3-rpi.gpio 2>/dev/null || warn "python3-rpi.gpio unavailable (not a Pi?) - continuing"
+sudo apt-get install -y python3-rpi.gpio || warn "python3-rpi.gpio unavailable (not a Pi?) - continuing"
 ok "packages installed"
 
 # ---------------------------------------------------------------------
 # 2. Python libraries
 # ---------------------------------------------------------------------
 say "[2/12] Python libraries"
-pip3 install --quiet --break-system-packages -r "$SRC_DIR/requirements.txt" 2>/dev/null \
-  || pip3 install --quiet -r "$SRC_DIR/requirements.txt"
+echo "  Also slow - opencv may build from source on a Pi."
+echo
+
+# Newer Debian/Raspberry Pi OS refuses to install into the system Python
+# without this flag; older pip does not recognise it. Test once, visibly,
+# instead of hiding the error and guessing from a failed exit code.
+if pip3 install --break-system-packages --dry-run pip >/dev/null 2>&1; then
+    PIPFLAG="--break-system-packages"
+else
+    PIPFLAG=""
+fi
+echo "  pip flag: ${PIPFLAG:-none needed}"
+
+# shellcheck disable=SC2086
+pip3 install $PIPFLAG -r "$SRC_DIR/requirements.txt"
+
 # proxyctl runs as root, so Flask must be importable by root too
-sudo pip3 install --quiet --break-system-packages flask 2>/dev/null \
-  || sudo pip3 install --quiet flask
+# shellcheck disable=SC2086
+sudo pip3 install $PIPFLAG flask
 ok "libraries installed"
 
 # ---------------------------------------------------------------------
@@ -167,8 +198,8 @@ else
         | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
         | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
-    sudo apt-get update -y -qq
-    sudo apt-get install -y -qq caddy
+    sudo apt-get update -y
+    sudo apt-get install -y caddy
     record pkg caddy
     record file /etc/apt/sources.list.d/caddy-stable.list
     record file /usr/share/keyrings/caddy-stable-archive-keyring.gpg
