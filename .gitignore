@@ -1,0 +1,21 @@
+# Runtime data - never commit these
+instance/
+*.db
+*.sqlite3
+proxy/proxyctl.db
+proxy/dryrun/
+logs/
+uploads/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
