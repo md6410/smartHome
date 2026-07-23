@@ -1,0 +1,16 @@
+# smartHome application dependencies
+flask
+flask-login
+flask-bcrypt
+flask-socketio
+flask-sqlalchemy
+python-socketio
+python-engineio
+eventlet
+jdatetime
+requests
+pyserial
+opencv-python
+# Raspberry Pi GPIO. Installed from apt as python3-rpi.gpio by install.sh;
+# pip falls back to this on a Pi and skips it elsewhere.
+RPi.GPIO; platform_machine == "armv7l" or platform_machine == "aarch64"
