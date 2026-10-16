@@ -120,6 +120,29 @@ not by systemd, so they won't appear in `systemctl`.
 
 ---
 
+## Updating
+
+One command pulls the latest `main` and restarts everything:
+
+```bash
+smarthome-update
+```
+
+It puts local edits aside (`git stash`), fast-forwards, reinstalls Python
+packages only when `requirements.txt` changed, refuses code that does not
+compile, restarts the services and checks each one answers. If any of that
+fails it puts the previous version back on its own.
+
+```bash
+smarthome-update --rollback   # back to the version before the last update
+smarthome-update --status     # running version and service state
+```
+
+`install.sh` creates the `smarthome-update` command. On an older install,
+run `bash ~/smartHome/update.sh` once and it creates it.
+
+---
+
 ## Uninstall
 
 ```bash
@@ -176,6 +199,7 @@ Worth doing before this faces the internet:
 smartHome/
 ├── install.sh              one-shot installer
 ├── uninstall.sh            reverses it, manifest-driven
+├── update.sh               one-command update, auto-rollback
 ├── requirements.txt
 ├── app.py                  control system + dashboard        :5000
 ├── chatServer.py           chat, Socket.IO                    :5554

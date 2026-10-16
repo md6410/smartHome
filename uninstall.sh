@@ -127,7 +127,7 @@ FILES="$(vals file)"
 while read -r f; do
     [[ -n "$f" && -e "$f" ]] || continue
     case "$f" in
-        /etc/systemd/system/*|/etc/apt/sources.list.d/*|/usr/share/keyrings/*)
+        /etc/systemd/system/*|/etc/apt/sources.list.d/*|/usr/share/keyrings/*|/usr/local/bin/smarthome-update)
             run "removed $f" sudo rm -f "$f" ;;
         *) warn "left $f in place (not a file this uninstaller manages)" ;;
     esac

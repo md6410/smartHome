@@ -449,6 +449,9 @@ else
     warn "apply did not report success - open the panel and press Apply"
 fi
 
+sudo ln -sf "$INSTALL_DIR/update.sh" /usr/local/bin/smarthome-update
+record file /usr/local/bin/smarthome-update
+
 record complete "$(date +%Y%m%d-%H%M%S)"
 sudo cp "$SRC_DIR/uninstall.sh" "$STATE_DIR/uninstall.sh" 2>/dev/null || true
 
@@ -480,6 +483,10 @@ echo -e "${MAGENTA}Checks${NC}"
 echo "   systemctl status proxyctl caddy smarthome --no-pager"
 echo "   curl -I -H 'Host: home.$BASE_DOMAIN' http://127.0.0.1/"
 echo "   journalctl -u proxyctl -f"
+echo
+echo -e "${MAGENTA}Updates${NC}"
+echo "   smarthome-update            pull the latest code and restart"
+echo "   smarthome-update --rollback undo the last update"
 echo
 echo -e "${MAGENTA}Removal${NC}"
 echo "   bash uninstall.sh"
