@@ -7,6 +7,13 @@
 <title>Parsa Home · Sign in</title>
 <link rel="icon" href="{{ url_for('static', filename='images/HomeLogo.png') }}" type="image/png">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="application-name" content="Parsa Home">
+<meta name="apple-mobile-web-app-title" content="Parsa Home">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 :root { --bg: #0b1020; --surface: rgba(255,255,255,.06); --border: rgba(255,255,255,.1); --text: #eef2ff; --muted: #9aa5c4; --accent: #8b9bff; --accent-2: #b28dff; --danger: #fb7185; }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -88,5 +95,6 @@ button:active { transform: scale(.98); }
 </div>
 {% endif %}
 {% if pk_ready %}<script src="{{ url_for('static', filename='js/passkey.js') }}"></script>{% endif %}
+<script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
 </body>
 </html>

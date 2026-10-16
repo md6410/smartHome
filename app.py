@@ -459,7 +459,10 @@ COOLER_FAN_COMMANDS = [
     b'\x01\x10\x00\x00\x00\x01\x02\x10\x4B\xEB\xA7',
     b'\x01\x10\x00\x00\x00\x01\x02\x11\x17\xEA\x0E'
 ]
-COOLER_MAX_LEVEL = len(COOLER_FAN_COMMANDS) - 1
+# The table goes to 19, but this cooler's top speed is level 5. Everything
+# - the slider, the + button, the server check - follows this one number,
+# so nothing above 5 can be sent from any page or old shortcut.
+COOLER_MAX_LEVEL = 5
 
 # Force USB-RS485 adapter port (CH340)
 COOLER_SERIAL_PORT = '/dev/ttyUSB0'
@@ -536,7 +539,15 @@ class CoolerController:
             'error': self.last_error,
         }
 
+    @staticmethod
+    def _bounded(changes):
+        # Last line of defence for the top speed, whoever calls in
+        if 'fanLevel' in changes:
+            changes['fanLevel'] = max(0, min(COOLER_MAX_LEVEL, int(changes['fanLevel'])))
+        return changes
+
     def configure(self, **changes):
+        changes = self._bounded(changes)
         with self._lock:
             self.settings.update(changes)
             if self.running:
@@ -547,6 +558,7 @@ class CoolerController:
         return self.status()
 
     def start(self, **changes):
+        changes = self._bounded(changes)
         with self._lock:
             self.settings.update(changes)
             if self.running:
@@ -902,6 +914,47 @@ def index():
     if passkeys.available and \
             passkeys.device_user(request.cookies.get(DEVICE_COOKIE)) != current_user.id:
         remember_device(resp, current_user.id)
+    return resp
+
+# =======================
+# INSTALLABLE APP (PWA)
+# =======================
+# Both public: the browser reads them before anyone has logged in, and
+# neither says anything about the house.
+@app.route('/manifest.webmanifest')
+def web_manifest():
+    icon = lambda name, size, purpose: {'src': f'/static/images/{name}', 'sizes': size,
+                                        'type': 'image/png', 'purpose': purpose}
+    resp = jsonify({
+        'id': '/',
+        'name': 'Parsa Home',
+        'short_name': 'Parsa Home',
+        'description': 'Lights, cooler and doors of the house',
+        'start_url': '/?src=app',
+        'scope': '/',
+        'display': 'standalone',
+        'orientation': 'portrait',
+        'background_color': '#0b1020',
+        'theme_color': '#0b1020',
+        'icons': [icon('icon-192.png', '192x192', 'any'),
+                  icon('icon-512.png', '512x512', 'any'),
+                  icon('icon-maskable-512.png', '512x512', 'maskable')],
+        # long-press on the app icon
+        'shortcuts': [{'name': 'Lights', 'url': '/#lights'},
+                      {'name': 'Climate', 'url': '/#climate'},
+                      {'name': 'Doors', 'url': '/#more'}],
+    })
+    resp.mimetype = 'application/manifest+json'
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    return resp
+
+@app.route('/sw.js')
+def service_worker():
+    # Served from the root so it may look after the whole site; never
+    # cached, so a new version reaches phones on their next visit
+    resp = send_from_directory(os.path.join(app.root_path, 'static', 'js'), 'sw.js',
+                               mimetype='application/javascript', max_age=0)
+    resp.headers['Cache-Control'] = 'no-cache'
     return resp
 
 @app.route('/images/<path:filename>')

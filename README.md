@@ -185,6 +185,23 @@ address out for 15 minutes.
 
 ---
 
+## Install as an app
+
+Open `https://home.<your domain>` on the phone:
+
+- **Android / Chrome:** an *Install Parsa Home* banner appears; tap
+  **Install**. Closed it? **More → Install as an app**.
+- **iPhone:** Safari shows how: **Share → Add to Home Screen**.
+
+The app opens full-screen from the home screen. The installed app keeps its
+own sign-in on iPhone, so sign in once inside it (then turn on fingerprint
+login there too). Nothing about the house is cached: lights, cooler and doors
+always come live from the Pi, and if it cannot be reached the app says
+*Can't reach home* instead of showing old states. Installing needs the https
+address; browsers do not install from the LAN IP.
+
+---
+
 ## Uninstall
 
 ```bash
