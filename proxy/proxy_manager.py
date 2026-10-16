@@ -564,7 +564,9 @@ def apply_config():
             if backup is not None:
                 with open(CADDYFILE, "w") as f:
                     f.write(backup)
-                run(["systemctl", "reload", "caddy"])
+                # The failed restart above has stopped Caddy, and a stopped
+                # service cannot be reloaded - start it again instead.
+                run(["systemctl", "restart", "caddy"])
             return False, "Reload failed, previous config restored:\n" + out
 
         conn = db()
@@ -691,14 +693,16 @@ def trim_log():
     if size <= cap:
         return False
     keep = int(cap * keep_pct / 100)
-    with open(ACCESS_LOG, "rb") as f:
+    # Rewrite in place. Replacing the file would leave a new one owned by
+    # root, which Caddy (running as caddy) cannot open on the next boot,
+    # and Caddy would keep writing to the deleted old file until then.
+    with open(ACCESS_LOG, "r+b") as f:
         f.seek(size - keep)
         f.readline()
         rest = f.read()
-    tmp = ACCESS_LOG + ".trim"
-    with open(tmp, "wb") as f:
+        f.seek(0)
         f.write(rest)
-    os.replace(tmp, ACCESS_LOG)
+        f.truncate()
     audit("log_trim", f"{size // 1048576}MB -> {len(rest) // 1048576}MB")
     return True
 

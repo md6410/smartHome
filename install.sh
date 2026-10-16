@@ -345,6 +345,24 @@ WantedBy=multi-user.target
 EOF
 ok "proxyctl.service"
 
+# Caddy itself: the stock unit has no Restart= and starts as the caddy
+# user, so a boot where /var/log/caddy/access.log is missing or owned by
+# root leaves it dead with "caddy failed". Recreate the log as root before
+# every start, wait for the network, and retry instead of giving up.
+sudo mkdir -p /etc/systemd/system/caddy.service.d
+unit caddy.service.d/smarthome.conf <<EOF
+[Unit]
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+ExecStartPre=+/bin/sh -c 'mkdir -p /var/log/caddy && touch /var/log/caddy/access.log && chown -R caddy:caddy /var/log/caddy && chmod 755 /var/log/caddy && chmod 644 /var/log/caddy/access.log'
+Restart=on-failure
+RestartSec=5
+EOF
+ok "caddy.service boot fixes"
+
 unit smarthome-group.target <<EOF
 [Unit]
 Description=smartHome Service Group

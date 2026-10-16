@@ -132,6 +132,8 @@ while read -r f; do
         *) warn "left $f in place (not a file this uninstaller manages)" ;;
     esac
 done <<< "$FILES"
+[[ -d /etc/systemd/system/caddy.service.d ]] && \
+    run "removed empty caddy.service.d" sudo rmdir /etc/systemd/system/caddy.service.d
 run "reloaded systemd" sudo systemctl daemon-reload
 
 # ---------------------------------------------------------------------
