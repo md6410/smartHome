@@ -155,9 +155,16 @@ Worth doing before this faces the internet:
 - **`instance/chat.db` is committed to this repository**, and `app.py` has
   contained a hard-coded `SECRET_KEY` and a `users_db` in source. If your fork
   is public, treat every password and session in it as exposed and rotate
-  them. `install.sh` replaces the published secret key with a fresh one on
-  install, and the included `.gitignore` keeps databases, uploads and logs out
-  of future commits — but it cannot remove what is already in the history.
+  them. Every server now generates its own session key in `instance/` on
+  first start (`local_secrets.py`), and the included `.gitignore` keeps
+  databases, uploads and logs out of future commits — but it cannot remove
+  what is already in the history.
+- **Default logins still in source:** chat `admin` / `admin123` (created on
+  first run), upload server `user1` / `password1` (until `users.json`
+  exists), and the firmware and control-panel passwords in their `.py`
+  files. Change them.
+- **Upload server password reset** lives at `/reset/<secret>`; the secret is
+  random per install, in `instance/.secret_upload_reset`.
 - **Upload limits.** Each route allows 64 MB by default. Raise it on the
   upload server's route if you push larger files.
 

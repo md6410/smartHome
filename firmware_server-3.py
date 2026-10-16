@@ -4,8 +4,11 @@ import os, json, re
 from datetime import datetime, timedelta
 import hashlib
 
+from local_secrets import load_secret
+
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this-to-random-string-12345'
+# The old fixed key let anyone sign their own admin session cookie
+app.secret_key = load_secret('firmware')
 app.permanent_session_lifetime = timedelta(hours=8)
 
 BASE_DIR        = os.path.dirname(os.path.abspath(__file__))
@@ -216,4 +219,5 @@ if __name__ == '__main__':
     print('🔑 Admin password: 13691113 (change ADMIN_PASSWORD_HASH)')
     print('📁 Projects:', ', '.join(PROJECTS))
     print()
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # debug=True exposed the Werkzeug debugger to the internet through Caddy
+    app.run(debug=False, host='0.0.0.0', port=5001)

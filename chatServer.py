@@ -7,9 +7,15 @@ from datetime import datetime, timedelta
 import os
 import base64
 import uuid
+import functools
+from flask_socketio import disconnect
+from werkzeug.utils import secure_filename
+
+from local_secrets import load_secret
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "mysecretkey123"
+# "mysecretkey123" let anyone forge a login cookie for any user, admin included
+app.config["SECRET_KEY"] = load_secret('chat')
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///chat.db"
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
@@ -130,6 +136,27 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 active_users = {}
+
+def authenticated_only(f):
+    """Socket events from a client that is not logged in are dropped."""
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_authenticated:
+            disconnect()
+            return
+        return f(*args, **kwargs)
+    return wrapped
+
+def is_group_member(group_id, user):
+    return user.is_admin or GroupMember.query.filter_by(group_id=group_id, user_id=user.id).first() is not None
+
+def may_message(receiver_id):
+    receiver = User.query.get(receiver_id)
+    if receiver is None:
+        return False
+    if receiver.is_admin and not current_user.is_admin:
+        return False
+    return can_contact(current_user.id, receiver_id)
 
 def can_contact(user1_id, user2_id):
     """Check if user1 can contact user2"""
@@ -348,7 +375,7 @@ def settings():
     if request.method == 'POST':
         if 'profile_picture' in request.files:
             file = request.files['profile_picture']
-            if file and file.filename:
+            if file and file.filename and '.' in file.filename:
                 ext = file.filename.rsplit('.', 1)[1].lower()
                 if ext in ['png', 'jpg', 'jpeg', 'gif']:
                     filename = f"user_{current_user.id}_{uuid.uuid4()}.{ext}"
@@ -446,7 +473,7 @@ def edit_group(group_id):
         
         if 'group_avatar' in request.files:
             file = request.files['group_avatar']
-            if file and file.filename:
+            if file and file.filename and '.' in file.filename:
                 ext = file.filename.rsplit('.', 1)[1].lower()
                 if ext in ['png', 'jpg', 'jpeg', 'gif']:
                     filename = f"group_{group.id}_{uuid.uuid4()}.{ext}"
@@ -589,9 +616,12 @@ def handle_disconnect():
         print(f"{current_user.username} disconnected")
 
 @socketio.on('private_message')
+@authenticated_only
 def handle_private_message(data):
     receiver_id = data['receiver_id']
     message_text = data['message']
+    if not may_message(receiver_id):
+        return
     
     is_delivered = receiver_id in active_users
     
@@ -622,9 +652,12 @@ def handle_private_message(data):
     emit('message_sent', msg_data)
 
 @socketio.on('file_upload')
+@authenticated_only
 def handle_file_upload(data):
     receiver_id = data['receiver_id']
-    filename = data['filename']
+    filename = secure_filename(data['filename']) or 'file'
+    if not may_message(receiver_id):
+        return
     file_data = data['file']
     file_type = data['type']
     latitude = data.get('latitude')
@@ -673,22 +706,28 @@ def handle_file_upload(data):
     emit('message_sent', msg_data)
 
 @socketio.on('mark_read')
+@authenticated_only
 def handle_mark_read(data):
     msg_ids = data['msg_ids']
     sender_id = data['sender_id']
     
-    Message.query.filter(Message.id.in_(msg_ids)).update({Message.is_read: True}, synchronize_session=False)
+    # Only messages sent to this user can be marked read by them
+    Message.query.filter(Message.id.in_(msg_ids), Message.receiver_id == current_user.id) \
+        .update({Message.is_read: True}, synchronize_session=False)
     db.session.commit()
     
     if sender_id in active_users:
         emit('messages_read', {'msg_ids': msg_ids, 'reader_id': current_user.id}, room=active_users[sender_id])
 
 @socketio.on('group_message')
+@authenticated_only
 def handle_group_message(data):
     group_id = data['group_id']
     message_text = data['message']
     
     group = Group.query.get(group_id)
+    if group is None or not is_group_member(group_id, current_user):
+        return
     
     new_msg = GroupMessage(
         group_id=group_id,
@@ -725,15 +764,18 @@ def handle_group_message(data):
     emit('group_message_sent', msg_data)
 
 @socketio.on('group_file_upload')
+@authenticated_only
 def handle_group_file_upload(data):
     group_id = data['group_id']
-    filename = data['filename']
+    filename = secure_filename(data['filename']) or 'file'
     file_data = data['file']
     file_type = data['type']
     latitude = data.get('latitude')
     longitude = data.get('longitude')
     
     group = Group.query.get(group_id)
+    if group is None or not is_group_member(group_id, current_user):
+        return
     
     # SAVE TO CHAT FOLDER - NOT PUBLIC UPLOADS
     unique_filename = f"group_{group_id}_{uuid.uuid4()}_{filename}"
@@ -784,6 +826,7 @@ def handle_group_file_upload(data):
     emit('group_message_sent', msg_data)
 
 @socketio.on('mark_group_read')
+@authenticated_only
 def handle_mark_group_read(data):
     group_id = data['group_id']
     
@@ -802,4 +845,5 @@ def handle_mark_group_read(data):
     db.session.commit()
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5554)
+    # debug=True exposed the Werkzeug debugger and ran a second reloader process
+    socketio.run(app, debug=False, host='0.0.0.0', port=5554)

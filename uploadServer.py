@@ -1,13 +1,17 @@
 from flask import Flask, request, render_template, send_from_directory, session, redirect, url_for, jsonify
 from werkzeug.utils import secure_filename
+from werkzeug.security import safe_join
 import os
 import hashlib
 import json
 import secrets
 from datetime import datetime, timedelta
 
+from local_secrets import load_secret
+
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this-to-random-string-12345'
+# The old fixed key let anyone sign their own 'authenticated' session cookie
+app.secret_key = load_secret('upload')
 app.permanent_session_lifetime = timedelta(hours=2)
 
 app.config.update(
@@ -33,8 +37,10 @@ upload_folders = {
     'DLNA Pictures': '/media/HDD/Pictures'
 }
 
-# Secret key for password reset — change this to something only you know
-RESET_SECRET = 'my-secret-reset-key-change-this'
+# Secret part of the password reset URL. It was a fixed string anyone could
+# read in the repository; now it is random per install and printed at start
+# (logs/uploadServer.log), or read it from instance/.secret_upload_reset
+RESET_SECRET = load_secret('upload_reset', 16)
 
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 TEMP_TOKENS = {}
@@ -564,8 +570,10 @@ def file_ips(filename):
 def delete_file(filename):
     if not session.get('authenticated', False):
         return "Unauthorized", 403
-    file_path = os.path.join(PUBLIC_UPLOAD_DIR, filename)
-    if os.path.exists(file_path):
+    # safe_join refuses '../' - os.path.join let /delete/../../app.py
+    # remove files outside the upload folder
+    file_path = safe_join(PUBLIC_UPLOAD_DIR, filename)
+    if file_path and os.path.isfile(file_path):
         os.remove(file_path)
         download_counts = get_download_counts()
         if filename in download_counts:
@@ -577,4 +585,5 @@ def delete_file(filename):
 
 if __name__ == '__main__':
     print(f"\n🔑 Password reset link: http://localhost:8000/reset/{RESET_SECRET}\n")
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    # debug=True exposed the Werkzeug debugger to the internet through Caddy
+    app.run(debug=False, host='0.0.0.0', port=8000)

@@ -1,1218 +1,996 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Parsa Home Smart Control</title>
-<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Parsa Home</title>
 <link rel="icon" href="{{ url_for('static', filename='images/HomeLogo.png') }}" type="image/png">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/HomeLogo.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; color: #333; padding: 20px; min-height: 100vh; transition: background 1s ease; }
-body.morning { background: linear-gradient(135deg, #FFB75E 0%, #ED8F03 50%, #667eea 100%); }
-body.noon { background: linear-gradient(135deg, #56CCF2 0%, #2F80ED 50%, #667eea 100%); }
-body.afternoon { background: linear-gradient(135deg, #F2994A 0%, #F2C94C 50%, #764ba2 100%); }
-body.night { background: linear-gradient(135deg, #2C3E50 0%, #4A4969 50%, #1a1a2e 100%); }
-.container { max-width: 1200px; margin: 0 auto; }
-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }
-.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-.header-title-section { flex: 1; min-width: 200px; }
-h1 { color: #667eea; font-size: 2.5em; margin-bottom: 5px; }
-.subtitle { color: #999; font-size: 1em; }
-.status-badge { display: flex; align-items: center; gap: 8px; background: #f8f9fa; padding: 8px 15px; border-radius: 20px; font-size: 0.9em; }
-.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #28a745; animation: pulse 2s infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-.logout-btn { background: #dc3545; color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.9em; transition: all 0.3s; }
-.logout-btn:hover { background: #c82333; transform: translateY(-2px); }
-.date-weather-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
-.date-section, .weather-section { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-.date-section h3, .weather-section h3 { font-size: 1em; color: #667eea; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-.shamsi-date { font-size: 1.3em; font-weight: 700; color: #495057; margin-bottom: 8px; direction: rtl; text-align: right; }
-.gregorian-date { font-size: 1.1em; color: #6c757d; margin-bottom: 15px; }
-.current-time { font-size: 4em; font-weight: 900; color: transparent; text-align: center; margin-top: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); background-size: 200% 200%; -webkit-background-clip: text; background-clip: text; animation: gradientShift 3s ease infinite, pulse-glow 2s ease-in-out infinite; text-shadow: 0 0 20px rgba(102, 126, 234, 0.3); letter-spacing: 0.05em; font-family: 'Courier New', monospace; position: relative; padding: 10px 0; }
-@keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-@keyframes pulse-glow { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.02); filter: brightness(1.1); } }
-.time-separator { display: inline-block; animation: blink 1s step-end infinite; }
-@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
-.time-digit { display: inline-block; min-width: 0.6em; text-align: center; transition: transform 0.3s ease; }
-.time-digit.flip { animation: flipDigit 0.6s ease; }
-@keyframes flipDigit { 0% { transform: rotateX(0deg); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0deg); } }
-.current-time::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 80%; height: 4px; background: linear-gradient(90deg, transparent, #667eea, transparent); border-radius: 2px; animation: slideGlow 2s ease-in-out infinite; }
-.current-time::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80%; height: 4px; background: linear-gradient(90deg, transparent, #764ba2, transparent); border-radius: 2px; animation: slideGlow 2s ease-in-out infinite reverse; }
-@keyframes slideGlow { 0%, 100% { width: 60%; opacity: 0.5; } 50% { width: 90%; opacity: 1; } }
-.weather-main { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
-.weather-icon { font-size: 4em; animation: bounce 3s ease-in-out infinite; }
-@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-.weather-temp { text-align: right; }
-.temp-main { font-size: 2.5em; font-weight: 700; color: #495057; }
-.temp-range { font-size: 0.9em; color: #6c757d; }
-.weather-description { font-size: 1.1em; color: #495057; font-weight: 600; margin-bottom: 15px; }
-.weather-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.weather-detail-item { text-align: center; padding: 10px; background: white; border-radius: 8px; transition: transform 0.3s ease; }
-.weather-detail-item:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-.weather-detail-label { font-size: 0.8em; color: #6c757d; margin-bottom: 5px; }
-.weather-detail-value { font-size: 1.2em; font-weight: 700; color: #495057; }
-.section { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 20px; }
-.section-title { font-size: 1.8em; color: #667eea; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.section-title::before { content: "●"; color: #764ba2; }
-.mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
-.mode-button { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; border: none; padding: 20px 15px; border-radius: 12px; cursor: pointer; font-size: 0.95em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4); text-align: center; position: relative; overflow: hidden; }
-.mode-button::after { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; }
-.mode-button:active::after { width: 300px; height: 300px; }
-.mode-button:hover { transform: translateY(-3px); box-shadow: 0 6px 25px rgba(108, 117, 125, 0.6); }
-.mode-button.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
-.mode-button.active:hover { box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6); }
-.mode-button.active::before { content: '✓'; position: absolute; top: 5px; right: 10px; font-size: 1.2em; }
-.light-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-.light-item { background: #f8f9fa; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; border-left: 4px solid #dc3545; }
-.light-item.light-on { border-left-color: #28a745; background: #e8f5e9; }
-.light-item:hover { transform: translateX(5px); }
-.light-name { font-weight: 500; color: #495057; flex: 1; font-size: 0.9em; display: flex; align-items: center; gap: 8px; }
-.light-status-indicator { width: 8px; height: 8px; border-radius: 50%; background: #dc3545; display: inline-block; }
-.light-item.light-on .light-status-indicator { background: #28a745; box-shadow: 0 0 8px #28a745; }
-.light-controls { display: flex; gap: 8px; }
-.btn-on, .btn-off { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85em; transition: all 0.2s ease; }
-.btn-on { background: #28a745; color: white; }
-.btn-on:hover { background: #218838; transform: scale(1.05); }
-.btn-on:disabled { background: #a8d5ba; cursor: not-allowed; }
-.btn-off { background: #dc3545; color: white; }
-.btn-off:hover { background: #c82333; transform: scale(1.05); }
-.btn-off:disabled { background: #f5a9b0; cursor: not-allowed; }
-.ac-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 15px; margin-bottom: 20px; }
-.status-display-panel { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e9ecef; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
-.status-item { display: flex; flex-direction: column; gap: 5px; }
-.status-label { font-size: 0.85em; color: #6c757d; font-weight: 600; }
-.status-value { font-size: 1.1em; font-weight: 700; color: #495057; }
-.status-value.active { color: #28a745; }
-.status-badge-inline { display: inline-flex; align-items: center; gap: 8px; background: #f8f9fa; padding: 8px 15px; border-radius: 20px; font-size: 0.85em; margin-left: auto; }
-.status-dot-inline { width: 12px; height: 12px; border-radius: 50%; background: #dc3545; }
-.status-dot-inline.status-on { background: #28a745; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); animation: pulse 2s infinite; }
-.status-dot-inline.status-off { background: #dc3545; }
-.status-text { font-weight: 600; color: #495057; }
-.status-badge-small { display: inline-flex; align-items: center; gap: 6px; background: #f8f9fa; padding: 5px 12px; border-radius: 15px; font-size: 0.8em; margin-left: 10px; }
-.status-dot-small { width: 8px; height: 8px; border-radius: 50%; }
-.status-dot-small.status-on { background: #28a745; box-shadow: 0 0 8px rgba(40, 167, 69, 0.5); }
-.status-dot-small.status-off { background: #dc3545; }
-.ac-power-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-.power-control { display: flex; justify-content: space-between; align-items: center; }
-.power-label { font-size: 1.3em; font-weight: 700; color: #495057; }
-.toggle-switch-large { position: relative; display: inline-block; width: 70px; height: 34px; }
-.toggle-switch-large input { opacity: 0; width: 0; height: 0; }
-.slider-large { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-.slider-large:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider-large { background-color: #28a745; }
-input:checked + .slider-large:before { transform: translateX(36px); }
-.toggle-switch-medium { position: relative; display: inline-block; width: 50px; height: 24px; }
-.toggle-switch-medium input { opacity: 0; width: 0; height: 0; }
-.slider-medium { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
-.slider-medium:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider-medium { background-color: #28a745; }
-input:checked + .slider-medium:before { transform: translateX(26px); }
-.control-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-.control-label { font-size: 1.1em; font-weight: 600; color: #495057; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-.control-label-small { font-size: 0.95em; font-weight: 600; color: #6c757d; margin-bottom: 10px; display: block; }
-.label-icon { font-size: 1.3em; }
-.value-display { margin-left: auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 700; min-width: 50px; text-align: center; }
-.temp-display { font-size: 1.2em; min-width: 70px; }
-.slider-container { margin-top: 10px; }
-.custom-slider { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px; background: #e9ecef; outline: none; transition: background 0.3s; }
-.custom-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5); transition: all 0.3s; }
-.custom-slider::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.7); }
-.custom-slider::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; border: none; box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5); transition: all 0.3s; }
-.custom-slider::-moz-range-thumb:hover { transform: scale(1.2); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.7); }
-.temp-slider::-webkit-slider-thumb { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
-.temp-slider::-moz-range-thumb { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
-.slider-labels, .temp-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.85em; color: #6c757d; }
-.toggle-controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
-.toggle-control-item { background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-.toggle-label { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.toggle-icon { font-size: 1.5em; }
-.toggle-text { flex: 1; font-weight: 600; color: #495057; }
-.time-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; }
-.time-btn, .time-btn-small { padding: 12px 10px; border: 2px solid #e9ecef; background: white; border-radius: 10px; cursor: pointer; font-weight: 600; color: #495057; transition: all 0.3s ease; font-size: 0.95em; }
-.time-btn-small { padding: 10px 8px; font-size: 0.85em; }
-.time-btn:hover, .time-btn-small:hover { border-color: #667eea; background: #f8f9ff; transform: translateY(-2px); }
-.time-btn.active, .time-btn-small.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: #667eea; }
-.repeat-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-.repeat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.repeat-options { padding-top: 15px; border-top: 2px solid #f8f9fa; animation: slideDown 0.3s ease; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-.btn-apply { width: 100%; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 30px; border-radius: 12px; cursor: pointer; font-size: 1.2em; font-weight: 700; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
-.btn-apply:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(40, 167, 69, 0.6); }
-.btn-apply:active { transform: translateY(0); }
-.btn-icon { font-size: 1.3em; }
-.individual-control-section { margin-top: 20px; }
-.subsection-title { font-size: 1.2em; font-weight: 600; color: #495057; margin-bottom: 15px; display: flex; align-items: center; }
-.quick-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-.quick-control-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 18px 20px; border-radius: 12px; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px; }
-.quick-control-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5); }
-.quick-control-btn.off-btn { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3); }
-.quick-control-btn.off-btn:hover { box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5); }
-.control-icon { font-size: 1.3em; }
-.control-text { font-weight: 600; }
-.door-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-.door-button { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white; border: none; padding: 20px; border-radius: 12px; cursor: pointer; font-size: 1.1em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4); }
-.door-button:hover { transform: translateY(-3px); box-shadow: 0 6px 25px rgba(23, 162, 184, 0.6); }
-.upload-server-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 15px; }
-.upload-server-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
-.info-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; gap: 15px; align-items: flex-start; transition: transform 0.3s ease, box-shadow 0.3s ease; }
-.info-card:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-.info-icon { font-size: 2.5em; min-width: 50px; }
-.info-content { flex: 1; }
-.info-title { font-size: 1.1em; font-weight: 700; color: #495057; margin-bottom: 5px; }
-.info-description { font-size: 0.9em; color: #6c757d; margin-bottom: 10px; }
-.info-link { display: inline-block; color: #667eea; text-decoration: none; font-weight: 600; font-size: 0.9em; transition: color 0.3s; }
-.info-link:hover { color: #764ba2; }
-.quick-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.action-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 20px; border-radius: 12px; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); display: flex; align-items: center; justify-content: center; gap: 10px; }
-.action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
-.action-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
-#notification { position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 9999; display: none; font-weight: 600; }
-@media (max-width: 768px) {
-    h1 { font-size: 2em; }
-    .header-top { flex-direction: column; text-align: center; }
-    .mode-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-    .light-item { flex-direction: column; gap: 10px; text-align: center; }
-    .time-selector { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
-    .toggle-controls-grid { grid-template-columns: 1fr; }
-    .weather-details { grid-template-columns: repeat(3, 1fr); }
-    .current-time { font-size: 3em; }
-    .weather-icon { font-size: 3em; }
-    .upload-server-info { grid-template-columns: 1fr; }
+:root {
+    --bg: #0b1020;
+    --surface: rgba(255, 255, 255, 0.055);
+    --surface-2: rgba(255, 255, 255, 0.09);
+    --surface-3: rgba(255, 255, 255, 0.14);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #eef2ff;
+    --muted: #9aa5c4;
+    --faint: #6b7594;
+    --accent: #8b9bff;
+    --accent-2: #b28dff;
+    --warm: #ffb547;
+    --warm-glow: rgba(255, 181, 71, 0.35);
+    --cool: #38c6f8;
+    --cool-glow: rgba(56, 198, 248, 0.35);
+    --ok: #34d399;
+    --danger: #fb7185;
+    --radius: 20px;
+    --radius-sm: 14px;
+    --nav-h: 68px;
+    --glow-a: #3b2a8f;
+    --glow-b: #0f3d6e;
+}
+body.morning   { --glow-a: #a24a2a; --glow-b: #6b3a8f; }
+body.noon      { --glow-a: #1d5fa8; --glow-b: #3b3aa8; }
+body.afternoon { --glow-a: #a8621d; --glow-b: #6b2a8f; }
+body.night     { --glow-a: #2c2a7f; --glow-b: #0f3d6e; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Vazirmatn', Tahoma, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+    padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: ''; position: fixed; inset: -20%; z-index: -1; pointer-events: none;
+    background:
+        radial-gradient(40% 35% at 15% 10%, var(--glow-a) 0%, transparent 70%),
+        radial-gradient(45% 40% at 90% 30%, var(--glow-b) 0%, transparent 70%),
+        radial-gradient(50% 40% at 50% 100%, rgba(56, 198, 248, 0.12) 0%, transparent 70%);
+    opacity: 0.75; transition: background 2s ease;
+}
+button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a { color: inherit; text-decoration: none; }
+
+.app { max-width: 1120px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 0; }
+
+/* ---------- header ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand img { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); }
+.brand h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+.brand p { font-size: 0.82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted); padding: 6px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); }
+.conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.conn.offline i { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.icon-btn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); transition: background .2s, color .2s; }
+.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+
+.hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.clock-card { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.greeting { font-size: 0.95rem; color: var(--muted); }
+.clock { font-size: clamp(3rem, 12vw, 4.6rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums;
+         background: linear-gradient(135deg, #fff 0%, #c9d2ff 60%, var(--accent-2) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.clock .sep { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+.dates { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 0.9rem; }
+.shamsi { direction: rtl; font-weight: 600; }
+.gregorian { color: var(--muted); }
+.weather-card { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+.weather-main { display: flex; align-items: center; gap: 14px; }
+.weather-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+.weather-temp { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.03em; }
+.weather-desc { color: var(--muted); font-size: 0.9rem; }
+.weather-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--surface); border-radius: 12px; padding: 8px 10px; }
+.stat span { display: block; font-size: 0.7rem; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+.stat b { font-size: 0.95rem; font-weight: 600; }
+
+/* ---------- quick actions ---------- */
+.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 26px; }
+.quick-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); text-align: left; transition: transform .15s ease, background .2s, border-color .2s, box-shadow .2s; min-height: 112px; }
+.quick-tile:active { transform: scale(0.97); }
+.quick-tile .q-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); font-size: 1.05rem; transition: background .2s, color .2s; }
+.quick-tile .q-title { font-weight: 600; font-size: 0.95rem; }
+.quick-tile .q-sub { font-size: 0.78rem; color: var(--muted); }
+.quick-tile.lights-tile.on .q-icon { background: var(--warm); color: #3b2500; box-shadow: 0 0 24px var(--warm-glow); }
+.quick-tile.cooler-tile.on { border-color: rgba(56, 198, 248, .35); }
+.quick-tile.cooler-tile.on .q-icon { background: var(--cool); color: #002433; box-shadow: 0 0 24px var(--cool-glow); }
+.quick-tile.armed { border-color: var(--warm); background: rgba(255, 181, 71, 0.12); }
+.quick-tile.armed .q-sub { color: var(--warm); font-weight: 600; }
+.quick-tile.busy { opacity: .6; pointer-events: none; }
+.split-btns { display: flex; gap: 6px; margin-top: auto; width: 100%; }
+.mini-btn { flex: 1; padding: 7px 0; border-radius: 10px; font-size: 0.78rem; font-weight: 600; background: var(--surface-2); transition: background .2s; }
+.mini-btn:hover { background: var(--surface-3); }
+
+/* ---------- sections ---------- */
+.section { margin-bottom: 30px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.section-head h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+.section-head h2 i { color: var(--accent); font-size: 1rem; }
+.section-head .meta { font-size: 0.82rem; color: var(--muted); }
+
+/* scenes */
+.scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.scene { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px 8px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); font-size: 0.86rem; font-weight: 600; transition: transform .15s, background .2s, border-color .2s, box-shadow .2s; }
+.scene i { font-size: 1.25rem; color: var(--muted); transition: color .2s; }
+.scene:active { transform: scale(0.96); }
+.scene.active { background: linear-gradient(135deg, rgba(139,155,255,.28), rgba(178,141,255,.22)); border-color: rgba(139,155,255,.55); box-shadow: 0 8px 28px rgba(139,155,255,.18); }
+.scene.active i { color: #fff; }
+.auto-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 12px 16px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); }
+.auto-row .txt { display: flex; align-items: center; gap: 12px; }
+.auto-row .txt i { color: var(--accent); }
+.auto-row small { display: block; color: var(--muted); font-size: 0.78rem; }
+
+/* switch */
+.switch { position: relative; width: 52px; height: 30px; flex-shrink: 0; border-radius: 999px; background: var(--surface-3); transition: background .25s; }
+.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); transition: transform .25s cubic-bezier(.3,1.4,.6,1); }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }
+.switch.cool[aria-checked="true"] { background: var(--cool); }
+.switch:disabled { opacity: .5; }
+
+/* lights */
+.room { margin-bottom: 18px; }
+.room-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
+.room-head h3 { font-size: 0.95rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.room-head h3 .count { font-size: 0.75rem; font-weight: 600; color: var(--faint); background: var(--surface); padding: 2px 8px; border-radius: 999px; }
+.room-head h3 .count.lit { color: var(--warm); background: rgba(255,181,71,.12); }
+.room-toggle { font-size: 0.78rem; font-weight: 600; color: var(--accent); padding: 6px 10px; border-radius: 10px; }
+.room-toggle:hover { background: var(--surface); }
+.lights { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.light { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 14px; min-height: 104px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); text-align: left; overflow: hidden; transition: transform .15s ease, background .25s, border-color .25s, box-shadow .25s; }
+.light:active { transform: scale(0.96); }
+.light .bulb { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--faint); transition: all .25s; }
+.light .name { font-size: 0.88rem; font-weight: 600; line-height: 1.25; }
+.light .light-state { font-size: 0.74rem; color: var(--faint); }
+.light.on { background: linear-gradient(160deg, rgba(255,181,71,.22), rgba(255,181,71,.06)); border-color: rgba(255,181,71,.45); box-shadow: 0 10px 30px rgba(255,181,71,.12); }
+.light.on .bulb { background: var(--warm); color: #3b2500; box-shadow: 0 0 22px var(--warm-glow); }
+.light.on .light-state { color: var(--warm); }
+
+/* ---------- climate ---------- */
+.climate { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; align-items: start; }
+.cooler-top { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.power { position: relative; width: 84px; height: 84px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); transition: all .3s ease; }
+.power:active { transform: scale(0.94); }
+.power.on { background: radial-gradient(circle at 30% 30%, #7fe0ff, var(--cool)); color: #002433; border-color: transparent; box-shadow: 0 0 0 6px rgba(56,198,248,.15), 0 0 40px var(--cool-glow); }
+.power.busy::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid transparent; border-top-color: var(--cool); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cooler-title h3 { font-size: 1.1rem; font-weight: 700; }
+.pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: var(--surface-2); color: var(--muted); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.pill.cooling { background: rgba(56,198,248,.14); color: var(--cool); }
+.pill.cooling i { background: var(--cool); box-shadow: 0 0 8px var(--cool); animation: blink 1.4s infinite; }
+.pill.resting { background: rgba(139,155,255,.14); color: var(--accent); }
+.pill.resting i { background: var(--accent); }
+.cooler-error { display: none; margin-top: 8px; font-size: 0.78rem; color: var(--danger); }
+.cooler-error.show { display: block; }
+.fan-spin { display: inline-block; }
+.power.on .fan-spin { animation: spin 1.6s linear infinite; }
+
+.ctl { padding: 16px 0; border-top: 1px solid var(--border); }
+.ctl-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+.stepper { display: flex; align-items: center; gap: 14px; }
+.step { width: 52px; height: 52px; flex-shrink: 0; border-radius: 16px; display: grid; place-items: center; background: var(--surface-2); font-size: 1.1rem; transition: background .2s, transform .1s; }
+.step:active { transform: scale(0.92); background: var(--surface-3); }
+.level { flex: 1; text-align: center; }
+.level b { display: block; font-size: 2.4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.level span { font-size: 0.75rem; color: var(--faint); }
+.range { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; margin-top: 16px; border-radius: 999px; outline: none;
+         background: linear-gradient(90deg, var(--cool) var(--pct, 15%), var(--surface-3) var(--pct, 15%)); }
+.range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 4px solid var(--cool); box-shadow: 0 2px 10px rgba(0,0,0,.35); cursor: pointer; }
+.range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 4px solid var(--cool); cursor: pointer; }
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.toggle-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); text-align: left; transition: background .2s, border-color .2s; }
+.toggle-card .t-icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--faint); transition: all .2s; }
+.toggle-card b { display: block; font-size: 0.88rem; }
+.toggle-card small { font-size: 0.74rem; color: var(--faint); }
+.toggle-card[aria-pressed="true"] { border-color: rgba(56,198,248,.45); background: rgba(56,198,248,.1); }
+.toggle-card[aria-pressed="true"] .t-icon { background: var(--cool); color: #002433; }
+.toggle-card[aria-pressed="true"] small { color: var(--cool); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 9px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; background: var(--surface); border: 1px solid var(--border); color: var(--muted); transition: all .2s; }
+.chip.active { background: var(--cool); border-color: var(--cool); color: #002433; }
+.chips.accent .chip.active { background: var(--accent); border-color: var(--accent); color: #0b1020; }
+.repeat-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.repeat-row small { display: block; font-size: 0.76rem; color: var(--faint); font-weight: 400; margin-top: 2px; }
+.collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+.collapse > div { overflow: hidden; }
+.collapse.open { grid-template-rows: 1fr; }
+.collapse.open > div { padding-top: 12px; }
+
+.split-card .cooler-top { margin-bottom: 0; }
+.split-note { margin-top: 14px; font-size: 0.78rem; color: var(--faint); }
+
+/* ---------- doors & servers ---------- */
+.doors { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.door { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); text-align: left; transition: all .2s; }
+.door .d-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 1.2rem; background: var(--surface-2); color: var(--accent); }
+.door b { display: block; }
+.door small { color: var(--muted); font-size: 0.78rem; }
+.door:active { transform: scale(0.97); }
+.door.armed { border-color: var(--warm); background: rgba(255,181,71,.12); }
+.door.armed .d-icon { background: var(--warm); color: #3b2500; }
+.door.armed small { color: var(--warm); font-weight: 600; }
+.door.busy { opacity: .6; pointer-events: none; }
+.server { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); margin-bottom: 10px; }
+.server .s-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.server .s-body { flex: 1; min-width: 0; }
+.server b { display: block; font-size: 0.95rem; }
+.server small { font-size: 0.78rem; color: var(--faint); }
+.server small.up { color: var(--ok); }
+.server .open { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.server .open.disabled { opacity: .35; pointer-events: none; }
+
+/* ---------- nav ---------- */
+.nav { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50;
+       display: flex; gap: 4px; padding: 6px; border-radius: 22px; background: rgba(17, 22, 42, 0.82); border: 1px solid var(--border);
+       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 12px 40px rgba(0,0,0,.45); width: min(440px, calc(100% - 24px)); }
+.nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 16px; font-size: 0.7rem; font-weight: 600; color: var(--faint); transition: color .2s, background .2s; }
+.nav a i { font-size: 1.1rem; }
+.nav a.active { color: var(--text); background: var(--surface-2); }
+.nav a.active i { color: var(--accent); }
+
+/* ---------- toast ---------- */
+.toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom)); z-index: 60;
+         transform: translate(-50%, 20px); opacity: 0; pointer-events: none; transition: all .3s ease;
+         padding: 12px 18px; border-radius: 14px; font-size: 0.88rem; font-weight: 600; max-width: calc(100% - 32px);
+         background: rgba(30, 37, 66, 0.95); border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,.4); display: flex; align-items: center; gap: 10px; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.err i { color: var(--danger); }
+.toast i { color: var(--ok); }
+
+@media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; }
+    .climate { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+    .quick { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
+    .scenes::-webkit-scrollbar { display: none; }
+    .scene { flex: 0 0 96px; scroll-snap-align: start; }
+    .lights { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .light { flex-direction: row; align-items: center; gap: 10px; min-height: 64px; padding: 10px 12px; }
+    .light .bulb { width: 34px; height: 34px; flex-shrink: 0; }
+    .light .name { font-size: 0.84rem; }
+    .doors { grid-template-columns: 1fr; }
+    .brand p .user { display: none; }
+    /* clock and weather share one compact row so the controls start above the fold */
+    .hero { grid-template-columns: 1.2fr 1fr; gap: 10px; }
+    .hero .card { padding: 14px; }
+    .greeting, .gregorian, .weather-stats { display: none; }
+    .clock { font-size: 2.7rem; }
+    .dates { font-size: 0.8rem; }
+    .weather-card { justify-content: center; }
+    .weather-main { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .weather-icon { font-size: 1.9rem; }
+    .weather-temp { font-size: 1.7rem; }
+    .weather-desc { font-size: 0.78rem; }
+    .quick-tile { min-height: 0; padding: 14px; }
+    .quick { margin-bottom: 22px; }
+}
+@media (max-width: 380px) {
+    .toggles { grid-template-columns: 1fr; }
+    .weather-stats .stat:last-child { display: none; }
+    .weather-stats { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 </style>
-
-<script type="text/javascript">
-$(document).ready(function() {
-    var userInteractingAC = false;
-    var userInteractingSplit = false;
-    
-    loadStatus();
-    loadDateWeather();
-    setInterval(loadStatus, 3000);
-    setInterval(loadDateWeather, 60000);
-    setInterval(updateClock, 1000);
-
-    function loadDateWeather() {
-        $.get("/get_date_weather", function(data) {
-            updateDateWeather(data);
-        });
-    }
-    
-    function updateDateWeather(data) {
-        $('#shamsi_date').text(data.shamsi);
-        $('#gregorian_date').text(data.gregorian);
-        updateTimeDisplay(data.time);
-        $('body').removeClass('morning noon afternoon night').addClass(data.timeOfDay);
-        
-        $('#weather_icon').text(data.weather.icon);
-        $('#weather_temp').text(data.weather.temperature + '°C');
-        $('#weather_feels').text(data.weather.feels_like + '°C');
-        $('#weather_range').text(data.weather.temp_min + '° / ' + data.weather.temp_max + '°');
-        $('#weather_desc').text(data.weather.description);
-        $('#weather_humidity').text(data.weather.humidity + '%');
-        $('#weather_wind').text(data.weather.wind_speed + ' km/h');
-    }
-    
-    function updateTimeDisplay(newTime) {
-        var currentTimeEl = $('#current_time');
-        var oldTime = currentTimeEl.attr('data-time') || '00:00';
-        
-        if (oldTime !== newTime) {
-            var timeHTML = '';
-            for (var i = 0; i < newTime.length; i++) {
-                if (newTime[i] === ':') {
-                    timeHTML += '<span class="time-separator">:</span>';
-                } else {
-                    var shouldFlip = oldTime[i] !== newTime[i];
-                    timeHTML += '<span class="time-digit' + (shouldFlip ? ' flip' : '') + '">' + newTime[i] + '</span>';
-                }
-            }
-            currentTimeEl.html(timeHTML);
-            currentTimeEl.attr('data-time', newTime);
-            
-            setTimeout(function() {
-                $('.time-digit').removeClass('flip');
-            }, 600);
-        }
-    }
-    
-    function updateClock() {
-        var now = new Date();
-        var hours = String(now.getHours()).padStart(2, '0');
-        var minutes = String(now.getMinutes()).padStart(2, '0');
-        var newTime = hours + ':' + minutes;
-        updateTimeDisplay(newTime);
-    }
-
-    function loadStatus() {
-        $.get("/get_status", function(data) {
-            updateUI(data);
-        });
-    }
-
-    function updateUI(data) {
-        $('.mode-button').removeClass('active');
-        if (data.currentMode) {
-            $('.mode-button[data-mode="' + data.currentMode + '"]').addClass('active');
-        }
-
-        $.each(data.lights, function(pin, isOn) {
-            var lightItem = $('.light-item[data-pin="' + pin + '"]');
-            if (isOn) {
-                lightItem.addClass('light-on');
-                lightItem.find('.btn-on').prop('disabled', true);
-                lightItem.find('.btn-off').prop('disabled', false);
-            } else {
-                lightItem.removeClass('light-on');
-                lightItem.find('.btn-on').prop('disabled', false);
-                lightItem.find('.btn-off').prop('disabled', true);
-            }
-        });
-
-        if (data.acAutoState && !userInteractingAC) {
-            var acAutoRunning = data.acAutoState.running;
-            
-            if (acAutoRunning) {
-                $('#ac_auto_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
-                $('#ac_auto_status_badge .status-text').text('RUNNING');
-            } else {
-                $('#ac_auto_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
-                $('#ac_auto_status_badge .status-text').text('OFF');
-            }
-            
-            $('#ac_auto_system_status').text(acAutoRunning ? 'RUNNING' : 'OFF')
-                .toggleClass('active', acAutoRunning);
-            $('#ac_auto_fan_status').text(acAutoRunning ? data.acAutoState.fanLevel : '-')
-                .toggleClass('active', acAutoRunning);
-            $('#ac_auto_pump_status').text(data.acAutoState.waterPump ? 'ON' : 'OFF')
-                .toggleClass('active', data.acAutoState.waterPump);
-            $('#ac_auto_fanbetween_status').text(data.acAutoState.fanBetween ? 'ON' : 'OFF')
-                .toggleClass('active', data.acAutoState.fanBetween);
-            
-            $('#ac_auto_power').prop('checked', acAutoRunning);
-        }
-
-        if (data.acSplitState && !userInteractingSplit) {
-            var acSplitRunning = data.acSplitState.running;
-            
-            if (acSplitRunning) {
-                $('#ac_split_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
-                $('#ac_split_status_badge .status-text').text('RUNNING');
-            } else {
-                $('#ac_split_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
-                $('#ac_split_status_badge .status-text').text('OFF');
-            }
-            
-            $('#ac_split_system_status').text(acSplitRunning ? 'RUNNING' : 'OFF')
-                .toggleClass('active', acSplitRunning);
-            $('#ac_split_temp_status').text(acSplitRunning ? data.acSplitState.temperature + '°C' : '-')
-                .toggleClass('active', acSplitRunning);
-            
-            $('#ac_split_power').prop('checked', acSplitRunning);
-        }
-
-        if (data.fanBetweenChannels !== undefined) {
-            var fanOn = data.fanBetweenChannels;
-            
-            if (fanOn) {
-                $('#fan_btw_status_badge .status-dot-small').removeClass('status-off').addClass('status-on');
-                $('#fan_btw_status_text').text('ON');
-            } else {
-                $('#fan_btw_status_badge .status-dot-small').removeClass('status-on').addClass('status-off');
-                $('#fan_btw_status_text').text('OFF');
-            }
-        }
-    }
-
-    $('#ac_auto_power, #fan_level_slider, #water_pump_toggle, #fan_btw_toggle').on('focus mousedown touchstart', function() {
-        userInteractingAC = true;
-    });
-    
-    $('.ac-card').first().on('click', function() {
-        userInteractingAC = true;
-        setTimeout(function() {
-            userInteractingAC = false;
-        }, 10000);
-    });
-
-    $('#fan_level_slider').on('input', function() {
-        $('#fan_level_display').text($(this).val());
-        userInteractingAC = true;
-    });
-
-    $('.time-btn[data-minutes]').click(function() {
-        $('.time-btn[data-minutes]').removeClass('active');
-        $(this).addClass('active');
-        $('#duration_value').val($(this).data('minutes'));
-        userInteractingAC = true;
-    });
-
-    $('#repeat_enabled').change(function() {
-        if ($(this).is(':checked')) {
-            $('#repeat_options').slideDown(300);
-        } else {
-            $('#repeat_options').slideUp(300);
-        }
-        userInteractingAC = true;
-    });
-
-    $('.time-btn-small[data-interval]').click(function() {
-        $('.time-btn-small[data-interval]').removeClass('active');
-        $(this).addClass('active');
-        $('#repeat_interval_value').val($(this).data('interval'));
-        userInteractingAC = true;
-    });
-
-    $('#apply_ac_auto').click(function() {
-        var status = $('#ac_auto_power').is(':checked') ? 'on' : 'off';
-        var fanLevel = $('#fan_level_slider').val();
-        var waterPump = $('#water_pump_toggle').is(':checked') ? 'on' : 'off';
-        var fanBtw = $('#fan_btw_toggle').is(':checked') ? 'on' : 'off';
-        var length = $('#duration_value').val();
-        var repeat = $('#repeat_enabled').is(':checked') ? 'on' : 'off';
-        var everyTimeMinute = $('#repeat_interval_value').val();
-
-        $('#apply_ac_auto').prop('disabled', true).html('<span class="btn-icon">⏳</span> Applying...');
-
-        $.post("/set_airconditionerAuto", {
-            status: status,
-            fanLevel: fanLevel,
-            waterPumpStatus: waterPump,
-            tempSet: 0,
-            length: length,
-            everyTimeMinute: everyTimeMinute,
-            repeat: repeat,
-            fanBtwChannelStatus: fanBtw
-        }, function(data) {
-            showNotification('✓ Water Cooler settings applied!');
-            $('#apply_ac_auto').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply Cooler Settings');
-            userInteractingAC = false;
-            loadStatus();
-        }).fail(function() {
-            showNotification('❌ Error applying settings');
-            $('#apply_ac_auto').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply Cooler Settings');
-            userInteractingAC = false;
-        });
-    });
-
-    $('#fan_btw_on').click(function() {
-        $.post("/on", {pin: 4}, function(data) {
-            showNotification('Fan Between Channels turned ON');
-            loadStatus();
-        });
-    });
-
-    $('#fan_btw_off').click(function() {
-        $.post("/off", {pin: 4}, function(data) {
-            showNotification('Fan Between Channels turned OFF');
-            loadStatus();
-        });
-    });
-
-    $('#ac_split_power, #temp_slider').on('focus mousedown touchstart', function() {
-        userInteractingSplit = true;
-    });
-    
-    $('.ac-card').last().on('click', function() {
-        userInteractingSplit = true;
-        setTimeout(function() {
-            userInteractingSplit = false;
-        }, 10000);
-    });
-    
-    $('#temp_slider').on('input', function() {
-        $('#temp_display').text($(this).val() + '°C');
-        userInteractingSplit = true;
-    });
-
-    $('.time-btn[data-minutes-split]').click(function() {
-        $('.time-btn[data-minutes-split]').removeClass('active');
-        $(this).addClass('active');
-        $('#duration_split_value').val($(this).data('minutes-split'));
-        userInteractingSplit = true;
-    });
-
-    $('#repeat_split_enabled').change(function() {
-        if ($(this).is(':checked')) {
-            $('#repeat_split_options').slideDown(300);
-        } else {
-            $('#repeat_split_options').slideUp(300);
-        }
-        userInteractingSplit = true;
-    });
-
-    $('.time-btn-small[data-interval-split]').click(function() {
-        $('.time-btn-small[data-interval-split]').removeClass('active');
-        $(this).addClass('active');
-        $('#repeat_split_interval_value').val($(this).data('interval-split'));
-        userInteractingSplit = true;
-    });
-
-    $('#apply_ac_split').click(function() {
-        var status = $('#ac_split_power').is(':checked') ? 'on' : 'off';
-        var tempSet = $('#temp_slider').val();
-        var length = $('#duration_split_value').val();
-        var repeat = $('#repeat_split_enabled').is(':checked') ? 'on' : 'off';
-        var everyTimeMinute = $('#repeat_split_interval_value').val();
-
-        $('#apply_ac_split').prop('disabled', true).html('<span class="btn-icon">⏳</span> Applying...');
-
-        $.post("/set_airconditionerSplit", {
-            status: status,
-            tempSet: tempSet,
-            length: length,
-            everyTimeMinute: everyTimeMinute,
-            repeat: repeat
-        }, function(data) {
-            showNotification('✓ Split AC settings applied!');
-            $('#apply_ac_split').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply AC Settings');
-            userInteractingSplit = false;
-            loadStatus();
-        }).fail(function() {
-            showNotification('❌ Error applying settings');
-            $('#apply_ac_split').prop('disabled', false).html('<span class="btn-icon">✓</span> Apply AC Settings');
-            userInteractingSplit = false;
-        });
-    });
-
-    $(".btn-on").click(function() {
-        var pin = $(this).data("pin");
-        $.post("/on", {pin: pin}, function(data) {
-            showNotification('Light turned ON');
-            loadStatus();
-        });
-    });
-
-    $(".btn-off").click(function() {
-        var pin = $(this).data("pin");
-        $.post("/off", {pin: pin}, function(data) {
-            showNotification('Light turned OFF');
-            loadStatus();
-        });
-    });
-
-    $(".mode-button").click(function() {
-        var mode = $(this).data("mode");
-        var isActive = $(this).hasClass("active");
-        var status = isActive ? "off" : "on";
-        
-        $.post("/set_mode", {modeType: mode, status: status}, function(data) {
-            showNotification(mode.replace(/_/g, ' ') + ' ' + status.toUpperCase());
-            loadStatus();
-        });
-    });
-
-    $("#toggle_parking_door_btn").click(function() {
-        $.post("/ParkingDoorToggle", function(data) {
-            showNotification('Parking door toggled');
-        });
-    });
-
-    $("#toggle_main_door_btn").click(function() {
-        $.post("/MainDoorToggle", function(data) {
-            showNotification('Main door toggled');
-        });
-    });
-
-    // Upload Server Control
-    function loadUploadServerStatus() {
-        $.get("/get_upload_server_status", function(data) {
-            updateUploadServerUI(data);
-        }).fail(function() {
-            console.log("Failed to get upload server status");
-        });
-    }
-    
-    function updateUploadServerUI(data) {
-        var isRunning = data.running;
-        
-        if (isRunning) {
-            $('#upload_server_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
-            $('#upload_server_status_badge .status-text').text('RUNNING');
-        } else {
-            $('#upload_server_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
-            $('#upload_server_status_badge .status-text').text('OFF');
-        }
-        
-        $('#upload_server_status').text(isRunning ? 'RUNNING' : 'OFF')
-            .toggleClass('active', isRunning);
-        $('#upload_server_port').text(isRunning ? '8000' : '-')
-            .toggleClass('active', isRunning);
-        
-        $('#upload_server_toggle').prop('checked', isRunning);
-        
-        $('#open_upload_btn').prop('disabled', !isRunning);
-        $('#upload_admin_link').toggleClass('disabled', !isRunning);
-        $('#upload_public_link').toggleClass('disabled', !isRunning);
-    }
-    
-    $('#upload_server_toggle').change(function() {
-        var isChecked = $(this).is(':checked');
-        var action = isChecked ? 'on' : 'off';
-        
-        $('#upload_server_toggle').prop('disabled', true);
-        
-        $.post("/toggle_upload_server", {action: action}, function(data) {
-            if (data.success) {
-                showNotification(data.message);
-                updateUploadServerUI(data);
-            } else {
-                showNotification('❌ ' + data.message);
-                $('#upload_server_toggle').prop('checked', !isChecked);
-            }
-        }).fail(function() {
-            showNotification('❌ Error toggling upload server');
-            $('#upload_server_toggle').prop('checked', !isChecked);
-        }).always(function() {
-            $('#upload_server_toggle').prop('disabled', false);
-        });
-    });
-    
-    loadUploadServerStatus();
-    setInterval(loadUploadServerStatus, 10000);
-
-
-    // Firmware Server Control
-    function loadFirmwareServerStatus() {
-        $.get("/get_firmware_server_status", function(data) {
-            updateFirmwareServerUI(data);
-        }).fail(function() {
-            console.log("Failed to get firmware server status");
-        });
-    }
-
-    function updateFirmwareServerUI(data) {
-        var isRunning = data.running;
-
-        if (isRunning) {
-            $('#firmware_server_status_badge .status-dot-inline').removeClass('status-off').addClass('status-on');
-            $('#firmware_server_status_badge .status-text').text('RUNNING');
-        } else {
-            $('#firmware_server_status_badge .status-dot-inline').removeClass('status-on').addClass('status-off');
-            $('#firmware_server_status_badge .status-text').text('OFF');
-        }
-
-        $('#firmware_server_status').text(isRunning ? 'RUNNING' : 'OFF')
-            .toggleClass('active', isRunning);
-        $('#firmware_server_port').text(isRunning ? '5001' : '-')
-            .toggleClass('active', isRunning);
-
-        $('#firmware_server_toggle').prop('checked', isRunning);
-        $('#open_firmware_btn').prop('disabled', !isRunning);
-        $('#firmware_admin_link').toggleClass('disabled', !isRunning);
-        $('#firmware_public_link').toggleClass('disabled', !isRunning);
-    }
-
-    $('#firmware_server_toggle').change(function() {
-        var isChecked = $(this).is(':checked');
-        var action = isChecked ? 'on' : 'off';
-
-        $('#firmware_server_toggle').prop('disabled', true);
-
-        $.post("/toggle_firmware_server", {action: action}, function(data) {
-            if (data.success) {
-                showNotification(data.message);
-                updateFirmwareServerUI(data);
-            } else {
-                showNotification('❌ ' + data.message);
-                $('#firmware_server_toggle').prop('checked', !isChecked);
-            }
-        }).fail(function() {
-            showNotification('❌ Error toggling firmware server');
-            $('#firmware_server_toggle').prop('checked', !isChecked);
-        }).always(function() {
-            $('#firmware_server_toggle').prop('disabled', false);
-        });
-    });
-
-    loadFirmwareServerStatus();
-    setInterval(loadFirmwareServerStatus, 10000);
-
-    function showNotification(message) {
-        if ($('#notification').length === 0) {
-            $('body').append('<div id="notification"></div>');
-        }
-        
-        $('#notification').text(message).fadeIn(300).delay(2000).fadeOut(300);
-    }
-});
-</script>
 </head>
 
-<body class="morning">
-<div class="container">
-    <header>
-        <div class="header-top">
-            <div class="header-title-section">
-                <h1>🏠 Parsa Home</h1>
-                <p class="subtitle">Smart Control System</p>
+<body class="night">
+<div class="app">
+
+    <!-- ===================== HOME ===================== -->
+    <section id="home">
+        <div class="top">
+            <div class="brand">
+                <img src="{{ url_for('static', filename='images/HomeLogo.png') }}" alt="">
+                <div>
+                    <h1>Parsa Home</h1>
+                    <p><span id="greeting">Welcome</span><span class="user">, {{ username }}</span></p>
+                </div>
             </div>
-            <div class="status-badge">
-                <span class="status-dot"></span>
-                <span>Connected</span>
+            <div class="top-actions">
+                <span class="conn" id="conn"><i></i><span>Online</span></span>
+                <a class="icon-btn" href="/logout" title="Log out" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i></a>
             </div>
-            <a href="/logout" class="logout-btn">🚪 Logout</a>
         </div>
-        
-        <div class="date-weather-container">
-            <div class="date-section">
-                <h3>📅 Date & Time</h3>
-                <div class="shamsi-date" id="shamsi_date">چهارشنبه، 22 بهمن 1404</div>
-                <div class="gregorian-date" id="gregorian_date">Wednesday, February 11, 2026</div>
-                <div class="current-time" id="current_time" data-time="14:29">14:29</div>
+
+        <div class="hero">
+            <div class="card clock-card">
+                <div class="greeting" id="greeting_line">Smart control</div>
+                <div class="clock" id="clock">--<span class="sep">:</span>--</div>
+                <div class="dates">
+                    <span class="shamsi" id="shamsi_date">&nbsp;</span>
+                    <span class="gregorian" id="gregorian_date">&nbsp;</span>
+                </div>
             </div>
-            
-            <div class="weather-section">
-                <h3>🌤️ Weather</h3>
+            <div class="card weather-card">
                 <div class="weather-main">
-                    <div class="weather-icon" id="weather_icon">☀️</div>
-                    <div class="weather-temp">
-                        <div class="temp-main" id="weather_temp">18°C</div>
-                        <div class="temp-range" id="weather_range">12° / 22°</div>
+                    <div class="weather-icon" id="weather_icon">🌤️</div>
+                    <div>
+                        <div class="weather-temp" id="weather_temp">--°</div>
+                        <div class="weather-desc" id="weather_desc">Loading weather…</div>
                     </div>
                 </div>
-                <div class="weather-description" id="weather_desc">Clear Sky</div>
-                <div class="weather-details">
-                    <div class="weather-detail-item">
-                        <div class="weather-detail-label">Feels Like</div>
-                        <div class="weather-detail-value" id="weather_feels">16°C</div>
-                    </div>
-                    <div class="weather-detail-item">
-                        <div class="weather-detail-label">Humidity</div>
-                        <div class="weather-detail-value" id="weather_humidity">45%</div>
-                    </div>
-                    <div class="weather-detail-item">
-                        <div class="weather-detail-label">Wind</div>
-                        <div class="weather-detail-value" id="weather_wind">12 km/h</div>
-                    </div>
+                <div class="weather-stats">
+                    <div class="stat"><span>Feels</span><b id="weather_feels">--</b></div>
+                    <div class="stat"><span>Humidity</span><b id="weather_humidity">--</b></div>
+                    <div class="stat"><span>Wind</span><b id="weather_wind">--</b></div>
                 </div>
             </div>
         </div>
-    </header>
 
-    <!-- Lighting Modes -->
-    <div class="section">
-        <div class="section-title">Lighting Modes</div>
-        <div class="mode-grid">
-            <button class="mode-button" data-mode="TV_MODE">📺 TV Mode</button>
-            <button class="mode-button" data-mode="BREAKFAST_MODE">🌅 Breakfast</button>
-            <button class="mode-button" data-mode="LUNCH_MODE">🍽️ Lunch</button>
-            <button class="mode-button" data-mode="DINNER_MODE">🌆 Dinner</button>
-            <button class="mode-button" data-mode="RELAX_MODE">😌 Relax</button>
-            <button class="mode-button" data-mode="NORMAL_NIGHT_MODE">🌙 Night</button>
-            <button class="mode-button" data-mode="NORMAL_DAY">☀️ Day</button>
-            <button class="mode-button" data-mode="MEETING_MODE">👔 Meeting</button>
-            <button class="mode-button" data-mode="PARTY_MODE">🎉 Party</button>
-            <button class="mode-button" data-mode="COOKING_MODE">👨🍳 Cooking</button>
-            <button class="mode-button" data-mode="AUTO_LIGHT_MODE">🤖 Auto</button>
-        </div>
-    </div>
-
-    <!-- Individual Lights -->
-    <div class="section">
-        <div class="section-title">Individual Light Controls</div>
-        <div class="light-grid">
-            <div class="light-item" data-pin="0">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Hidden Light</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="0">ON</button>
-                    <button class="btn-off" data-pin="0">OFF</button>
+        <div class="quick">
+            <div class="quick-tile lights-tile" id="q_lights">
+                <span class="q-icon"><i class="fa-solid fa-lightbulb"></i></span>
+                <div>
+                    <div class="q-title">Lights</div>
+                    <div class="q-sub" id="q_lights_sub">— on</div>
+                </div>
+                <div class="split-btns">
+                    <button class="mini-btn" data-all="on">All on</button>
+                    <button class="mini-btn" data-all="off">All off</button>
                 </div>
             </div>
-            <div class="light-item" data-pin="8">
-                <span class="light-name"><span class="light-status-indicator"></span> 🏮 Living Room Chandelier</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="8">ON</button>
-                    <button class="btn-off" data-pin="8">OFF</button>
+            <button class="quick-tile cooler-tile" id="q_cooler">
+                <span class="q-icon"><i class="fa-solid fa-snowflake"></i></span>
+                <div>
+                    <div class="q-title">Water Cooler</div>
+                    <div class="q-sub" id="q_cooler_sub">Off</div>
                 </div>
-            </div>
-            <div class="light-item" data-pin="17">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Living Room Halogen</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="17">ON</button>
-                    <button class="btn-off" data-pin="17">OFF</button>
+            </button>
+            <button class="quick-tile door-quick" data-door="main">
+                <span class="q-icon"><i class="fa-solid fa-door-closed"></i></span>
+                <div>
+                    <div class="q-title">Main Door</div>
+                    <div class="q-sub">Tap to open</div>
                 </div>
-            </div>
-            <div class="light-item" data-pin="24">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Kitchen Pendant</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="24">ON</button>
-                    <button class="btn-off" data-pin="24">OFF</button>
+            </button>
+            <button class="quick-tile door-quick" data-door="parking">
+                <span class="q-icon"><i class="fa-solid fa-car"></i></span>
+                <div>
+                    <div class="q-title">Parking</div>
+                    <div class="q-sub">Tap to open</div>
                 </div>
-            </div>
-            <div class="light-item" data-pin="25">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Hallway Linear</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="25">ON</button>
-                    <button class="btn-off" data-pin="25">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="5">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Island Top</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="5">ON</button>
-                    <button class="btn-off" data-pin="5">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="20">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Kitchen Ceiling</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="20">ON</button>
-                    <button class="btn-off" data-pin="20">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="22">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Living Room Square</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="22">ON</button>
-                    <button class="btn-off" data-pin="22">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="16">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Entryway</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="16">ON</button>
-                    <button class="btn-off" data-pin="16">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="10">
-                <span class="light-name"><span class="light-status-indicator"></span> 🏮 Dinner Chandelier</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="10">ON</button>
-                    <button class="btn-off" data-pin="10">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="7">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Dinner Wall Linear</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="7">ON</button>
-                    <button class="btn-off" data-pin="7">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="19">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Light Receiver 1</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="19">ON</button>
-                    <button class="btn-off" data-pin="19">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="1">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Dance Light</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="1">ON</button>
-                    <button class="btn-off" data-pin="1">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="12">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Light Receiver 2</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="12">ON</button>
-                    <button class="btn-off" data-pin="12">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="13">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Behind Stove</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="13">ON</button>
-                    <button class="btn-off" data-pin="13">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="27">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Living Wall Linear</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="27">ON</button>
-                    <button class="btn-off" data-pin="27">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="3">
-                <span class="light-name"><span class="light-status-indicator"></span> 💡 Bar Hidden</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="3">ON</button>
-                    <button class="btn-off" data-pin="3">OFF</button>
-                </div>
-            </div>
-            <div class="light-item" data-pin="6">
-                <span class="light-name"><span class="light-status-indicator"></span> 📺 TV Hidden</span>
-                <div class="light-controls">
-                    <button class="btn-on" data-pin="6">ON</button>
-                    <button class="btn-off" data-pin="6">OFF</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- AC Auto Water Cooler -->
-    <div class="section">
-        <div class="section-title">
-            ❄️ Water Cooler (Auto)
-            <span class="status-badge-inline" id="ac_auto_status_badge">
-                <span class="status-dot-inline status-off"></span>
-                <span class="status-text">OFF</span>
-            </span>
-        </div>
-        
-        <div class="ac-card">
-            <div class="status-display-panel">
-                <div class="status-item">
-                    <span class="status-label">System Status:</span>
-                    <span class="status-value" id="ac_auto_system_status">OFF</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Fan Level:</span>
-                    <span class="status-value" id="ac_auto_fan_status">-</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Water Pump:</span>
-                    <span class="status-value" id="ac_auto_pump_status">OFF</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Fan Between:</span>
-                    <span class="status-value" id="ac_auto_fanbetween_status">OFF</span>
-                </div>
-            </div>
-
-            <div class="ac-power-section">
-                <div class="power-control">
-                    <span class="power-label">Power</span>
-                    <label class="toggle-switch-large">
-                        <input type="checkbox" id="ac_auto_power">
-                        <span class="slider-large"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <div class="control-label">
-                    <span class="label-icon">💨</span>
-                    <span>Fan Speed</span>
-                    <span class="value-display" id="fan_level_display">3</span>
-                </div>
-                <input type="range" id="fan_level_slider" class="custom-slider" min="0" max="19" value="3">
-                <div class="slider-labels">
-                    <span>OFF</span>
-                    <span>Level 10</span>
-                    <span>MAX</span>
-                </div>
-            </div>
-
-            <div class="toggle-controls-grid">
-                <div class="toggle-control-item">
-                    <label class="toggle-label">
-                        <span class="toggle-icon">💧</span>
-                        <span class="toggle-text">Water Pump</span>
-                        <label class="toggle-switch-medium">
-                            <input type="checkbox" id="water_pump_toggle">
-                            <span class="slider-medium"></span>
-                        </label>
-                    </label>
-                </div>
-                
-                <div class="toggle-control-item">
-                    <label class="toggle-label">
-                        <span class="toggle-icon">🌀</span>
-                        <span class="toggle-text">Fan Between Channels
-                            <span class="status-badge-small" id="fan_btw_status_badge">
-                                <span class="status-dot-small status-off"></span>
-                                <span id="fan_btw_status_text">OFF</span>
-                            </span>
-                        </span>
-                        <label class="toggle-switch-medium">
-                            <input type="checkbox" id="fan_btw_toggle">
-                            <span class="slider-medium"></span>
-                        </label>
-                    </label>
-                </div>
-            </div>
-
-            <div class="individual-control-section">
-                <div class="subsection-title">Fan Between Channels Individual Control</div>
-                <div class="quick-controls">
-                    <button class="quick-control-btn" id="fan_btw_on">
-                        <span class="control-icon">✓</span>
-                        <span class="control-text">Turn ON</span>
-                    </button>
-                    <button class="quick-control-btn off-btn" id="fan_btw_off">
-                        <span class="control-icon">✕</span>
-                        <span class="control-text">Turn OFF</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <span class="control-label-small">Duration</span>
-                <div class="time-selector">
-                    <button class="time-btn" data-minutes="15">15 min</button>
-                    <button class="time-btn active" data-minutes="30">30 min</button>
-                    <button class="time-btn" data-minutes="45">45 min</button>
-                    <button class="time-btn" data-minutes="60">1 hour</button>
-                    <button class="time-btn" data-minutes="90">1.5 hr</button>
-                    <button class="time-btn" data-minutes="120">2 hr</button>
-                    <button class="time-btn" data-minutes="180">3 hr</button>
-                    <button class="time-btn" data-minutes="240">4 hr</button>
-                </div>
-                <input type="hidden" id="duration_value" value="30">
-            </div>
-
-            <div class="repeat-section">
-                <div class="repeat-header">
-                    <span class="control-label-small">Repeat Cycle</span>
-                    <label class="toggle-switch-medium">
-                        <input type="checkbox" id="repeat_enabled">
-                        <span class="slider-medium"></span>
-                    </label>
-                </div>
-                <div id="repeat_options" style="display: none;">
-                    <span class="control-label-small">Interval Between Cycles</span>
-                    <div class="time-selector">
-                        <button class="time-btn-small active" data-interval="30">30 min</button>
-                        <button class="time-btn-small" data-interval="45">45 min</button>
-                        <button class="time-btn-small" data-interval="60">1 hour</button>
-                        <button class="time-btn-small" data-interval="90">1.5 hr</button>
-                        <button class="time-btn-small" data-interval="120">2 hr</button>
-                        <button class="time-btn-small" data-interval="180">3 hr</button>
-                    </div>
-                    <input type="hidden" id="repeat_interval_value" value="30">
-                </div>
-            </div>
-
-            <button class="btn-apply" id="apply_ac_auto">
-                <span class="btn-icon">✓</span>
-                Apply Cooler Settings
             </button>
         </div>
-    </div>
 
-    <!-- AC Split -->
-    <div class="section">
-        <div class="section-title">
-            ❄️ Split Air Conditioner
-            <span class="status-badge-inline" id="ac_split_status_badge">
-                <span class="status-dot-inline status-off"></span>
-                <span class="status-text">OFF</span>
-            </span>
-        </div>
-        
-        <div class="ac-card">
-            <div class="status-display-panel">
-                <div class="status-item">
-                    <span class="status-label">System Status:</span>
-                    <span class="status-value" id="ac_split_system_status">OFF</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Target Temperature:</span>
-                    <span class="status-value" id="ac_split_temp_status">-</span>
-                </div>
+        <div class="section">
+            <div class="section-head">
+                <h2><i class="fa-solid fa-wand-magic-sparkles"></i>Scenes</h2>
+                <span class="meta" id="scene_meta"></span>
             </div>
-
-            <div class="ac-power-section">
-                <div class="power-control">
-                    <span class="power-label">Power</span>
-                    <label class="toggle-switch-large">
-                        <input type="checkbox" id="ac_split_power">
-                        <span class="slider-large"></span>
-                    </label>
-                </div>
+            <div class="scenes">
+                {% for mode, label, icon in scenes %}
+                <button class="scene" data-mode="{{ mode }}" aria-pressed="false">
+                    <i class="fa-solid {{ icon }}"></i>{{ label }}
+                </button>
+                {% endfor %}
             </div>
-
-            <div class="control-section">
-                <div class="control-label">
-                    <span class="label-icon">🌡️</span>
-                    <span>Temperature</span>
-                    <span class="value-display temp-display" id="temp_display">23°C</span>
-                </div>
-                <input type="range" id="temp_slider" class="custom-slider temp-slider" min="16" max="30" value="23">
-                <div class="temp-labels">
-                    <span>16°C</span>
-                    <span>23°C</span>
-                    <span>30°C</span>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <span class="control-label-small">Duration</span>
-                <div class="time-selector">
-                    <button class="time-btn" data-minutes-split="30">30 min</button>
-                    <button class="time-btn active" data-minutes-split="60">1 hour</button>
-                    <button class="time-btn" data-minutes-split="120">2 hr</button>
-                    <button class="time-btn" data-minutes-split="180">3 hr</button>
-                    <button class="time-btn" data-minutes-split="240">4 hr</button>
-                    <button class="time-btn" data-minutes-split="360">6 hr</button>
-                    <button class="time-btn" data-minutes-split="480">8 hr</button>
-                </div>
-                <input type="hidden" id="duration_split_value" value="60">
-            </div>
-
-            <div class="repeat-section">
-                <div class="repeat-header">
-                    <span class="control-label-small">Repeat Cycle</span>
-                    <label class="toggle-switch-medium">
-                        <input type="checkbox" id="repeat_split_enabled">
-                        <span class="slider-medium"></span>
-                    </label>
-                </div>
-                <div id="repeat_split_options" style="display: none;">
-                    <span class="control-label-small">Interval Between Cycles</span>
-                    <div class="time-selector">
-                        <button class="time-btn-small active" data-interval-split="30">30 min</button>
-                        <button class="time-btn-small" data-interval-split="60">1 hour</button>
-                        <button class="time-btn-small" data-interval-split="120">2 hr</button>
-                        <button class="time-btn-small" data-interval-split="180">3 hr</button>
+            <div class="auto-row">
+                <div class="txt">
+                    <i class="fa-solid fa-robot"></i>
+                    <div>
+                        <b>Automatic schedule</b>
+                        <small>Changes the scene through the day</small>
                     </div>
-                    <input type="hidden" id="repeat_split_interval_value" value="30">
+                </div>
+                <button class="switch" id="auto_switch" role="switch" aria-checked="false" aria-label="Automatic schedule"></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== LIGHTS ===================== -->
+    <section class="section" id="lights">
+        <div class="section-head">
+            <h2><i class="fa-solid fa-lightbulb"></i>Lights</h2>
+            <span class="meta" id="lights_meta"></span>
+        </div>
+        {% for area, icon, lights in light_groups %}
+        <div class="room">
+            <div class="room-head">
+                <h3><i class="fa-solid {{ icon }}"></i>{{ area }} <span class="count">0/{{ lights|length }}</span></h3>
+                <button class="room-toggle">All on</button>
+            </div>
+            <div class="lights">
+                {% for pin, label in lights %}
+                <button class="light" data-pin="{{ pin }}" aria-pressed="false">
+                    <span class="bulb"><i class="fa-solid fa-lightbulb"></i></span>
+                    <span>
+                        <span class="name">{{ label }}</span><br>
+                        <span class="light-state">Off</span>
+                    </span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+
+    <!-- ===================== CLIMATE ===================== -->
+    <section class="section" id="climate">
+        <div class="section-head">
+            <h2><i class="fa-solid fa-temperature-half"></i>Climate</h2>
+        </div>
+        <div class="climate">
+            <div class="card">
+                <div class="cooler-top">
+                    <button class="power" id="cooler_power" aria-label="Water cooler power">
+                        <i class="fa-solid fa-fan fan-spin"></i>
+                    </button>
+                    <div class="cooler-title">
+                        <h3>Water Cooler</h3>
+                        <span class="pill" id="cooler_pill"><i></i><span>Off</span></span>
+                        <div class="cooler-error" id="cooler_error"></div>
+                    </div>
+                </div>
+
+                <div class="ctl">
+                    <div class="ctl-label"><span>Fan speed</span><span id="fan_hint">Applies instantly</span></div>
+                    <div class="stepper">
+                        <button class="step" id="fan_down" aria-label="Slower"><i class="fa-solid fa-minus"></i></button>
+                        <div class="level"><b id="fan_value">3</b><span>of {{ cooler_max }}</span></div>
+                        <button class="step" id="fan_up" aria-label="Faster"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <input type="range" class="range" id="fan_range" min="1" max="{{ cooler_max }}" value="3" aria-label="Fan speed">
+                </div>
+
+                <div class="ctl">
+                    <div class="toggles">
+                        <button class="toggle-card" id="pump_toggle" aria-pressed="false">
+                            <span class="t-icon"><i class="fa-solid fa-droplet"></i></span>
+                            <span><b>Water pump</b><small>Off</small></span>
+                        </button>
+                        <button class="toggle-card" id="fanbtw_toggle" aria-pressed="false">
+                            <span class="t-icon"><i class="fa-solid fa-wind"></i></span>
+                            <span><b>Channel fan</b><small>Off</small></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ctl">
+                    <div class="ctl-label"><span>Run for</span></div>
+                    <div class="chips" id="length_chips">
+                        <button class="chip" data-v="15">15m</button>
+                        <button class="chip" data-v="30">30m</button>
+                        <button class="chip" data-v="45">45m</button>
+                        <button class="chip" data-v="60">1h</button>
+                        <button class="chip" data-v="90">1.5h</button>
+                        <button class="chip" data-v="120">2h</button>
+                        <button class="chip" data-v="180">3h</button>
+                        <button class="chip" data-v="240">4h</button>
+                        <button class="chip" data-v="480">8h</button>
+                    </div>
+                </div>
+
+                <div class="ctl">
+                    <div class="repeat-row">
+                        <div class="ctl-label" style="margin:0"><span>Repeat<small>Rest, then run again</small></span></div>
+                        <button class="switch cool" id="repeat_switch" role="switch" aria-checked="false" aria-label="Repeat"></button>
+                    </div>
+                    <div class="collapse" id="repeat_box">
+                        <div>
+                            <div class="ctl-label"><span>Rest between runs</span></div>
+                            <div class="chips accent" id="interval_chips">
+                                <button class="chip" data-v="15">15m</button>
+                                <button class="chip" data-v="30">30m</button>
+                                <button class="chip" data-v="45">45m</button>
+                                <button class="chip" data-v="60">1h</button>
+                                <button class="chip" data-v="90">1.5h</button>
+                                <button class="chip" data-v="120">2h</button>
+                                <button class="chip" data-v="180">3h</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <button class="btn-apply" id="apply_ac_split">
-                <span class="btn-icon">✓</span>
-                Apply AC Settings
+            <div class="card split-card">
+                <div class="cooler-top">
+                    <button class="power" id="split_power" aria-label="Split AC power">
+                        <i class="fa-solid fa-snowflake"></i>
+                    </button>
+                    <div class="cooler-title">
+                        <h3>Split AC</h3>
+                        <span class="pill" id="split_pill"><i></i><span>Off</span></span>
+                    </div>
+                </div>
+                <p class="split-note">Infrared on/off command.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== MORE ===================== -->
+    <section class="section" id="more">
+        <div class="section-head">
+            <h2><i class="fa-solid fa-house"></i>Doors &amp; Services</h2>
+        </div>
+        <div class="doors">
+            <button class="door" data-door="main">
+                <span class="d-icon"><i class="fa-solid fa-door-closed"></i></span>
+                <span><b>Main Door</b><small>Tap to open</small></span>
+            </button>
+            <button class="door" data-door="parking">
+                <span class="d-icon"><i class="fa-solid fa-car"></i></span>
+                <span><b>Parking Door</b><small>Tap to open</small></span>
             </button>
         </div>
-    </div>
 
-    <!-- Door Controls -->
-    <div class="section">
-        <div class="section-title">Door Controls</div>
-        <div class="door-controls">
-            <button class="door-button" id="toggle_main_door_btn">🚪 Main Door</button>
-            <button class="door-button" id="toggle_parking_door_btn">🚗 Parking Door</button>
+        <div class="server" id="srv_upload">
+            <span class="s-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+            <div class="s-body">
+                <b>Upload Server</b>
+                <small>Stopped</small>
+            </div>
+            <a class="open disabled" href="https://uploadserver.{{ base_domain }}/files" target="_blank" rel="noopener" aria-label="Open upload server"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            <button class="switch" role="switch" aria-checked="false" aria-label="Upload server"></button>
         </div>
-    </div>
-
-    <!-- Upload Server Control -->
-    <div class="section">
-        <div class="section-title">
-            📤 Upload Server
-            <span class="status-badge-inline" id="upload_server_status_badge">
-                <span class="status-dot-inline status-off"></span>
-                <span class="status-text">OFF</span>
-            </span>
+        <div class="server" id="srv_firmware">
+            <span class="s-icon"><i class="fa-solid fa-microchip"></i></span>
+            <div class="s-body">
+                <b>Firmware Server</b>
+                <small>Stopped</small>
+            </div>
+            <a class="open disabled" href="https://firmware.{{ base_domain }}" target="_blank" rel="noopener" aria-label="Open firmware server"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            <button class="switch" role="switch" aria-checked="false" aria-label="Firmware server"></button>
         </div>
-        
-        <div class="upload-server-card">
-            <div class="status-display-panel">
-                <div class="status-item">
-                    <span class="status-label">Server Status:</span>
-                    <span class="status-value" id="upload_server_status">OFF</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Port:</span>
-                    <span class="status-value" id="upload_server_port">-</span>
-                </div>
-            </div>
-
-            <div class="ac-power-section">
-                <div class="power-control">
-                    <span class="power-label">Upload Server</span>
-                    <label class="toggle-switch-large">
-                        <input type="checkbox" id="upload_server_toggle">
-                        <span class="slider-large"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="upload-server-info">
-                <div class="info-card">
-                    <div class="info-icon">📁</div>
-                    <div class="info-content">
-                        <div class="info-title">Upload Files</div>
-                        <div class="info-description">Upload and manage files</div>
-                           <a href="https://uploadserver.turingco.ir/files">Open Upload Server</a>
-                            Open Admin Panel →
-                        </a>
-
-
-                       
-                    </div>
-                </div>
-                
-                <div class="info-card">
-                    <div class="info-icon">🔗</div>
-                    <div class="info-content">
-                        <div class="info-title">Public Access</div>
-                        <div class="info-description">Share files with others</div>
-                        <a href="https://uploadserver.turingco.ir/files" target="_blank" class="info-link" id="upload_public_link">
-                            Open Public Page →
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="quick-actions">
-                <button class="action-btn" onclick="window.open('https://uploadserver.turingco.ir/files', '_blank')" id="open_upload_btn">
-                    <span class="btn-icon">🌐</span>
-                    Open Upload Server
-                </button>
-            </div>
-        </div>
-    </div>
-
-
-<!-- Firmware Server Control -->
-    <div class="section">
-        <div class="section-title">
-            🔧 Firmware Server
-            <span class="status-badge-inline" id="firmware_server_status_badge">
-                <span class="status-dot-inline status-off"></span>
-                <span class="status-text">OFF</span>
-            </span>
-        </div>
-
-        <div class="upload-server-card">
-            <div class="status-display-panel">
-                <div class="status-item">
-                    <span class="status-label">Server Status:</span>
-                    <span class="status-value" id="firmware_server_status">OFF</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Port:</span>
-                    <span class="status-value" id="firmware_server_port">-</span>
-                </div>
-            </div>
-
-            <div class="ac-power-section">
-                <div class="power-control">
-                    <span class="power-label">Firmware Server</span>
-                    <label class="toggle-switch-large">
-                        <input type="checkbox" id="firmware_server_toggle">
-                        <span class="slider-large"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="upload-server-info">
-                <div class="info-card">
-                    <div class="info-icon">📦</div>
-                    <div class="info-content">
-                        <div class="info-title">Firmware Files</div>
-                        <div class="info-description">Manage and deploy firmware binaries</div>
-                        <a href="https://firmware.turingco.ir" target="_blank" class="info-link" id="firmware_admin_link">
-                            Open Admin Panel →
-                        </a>
-                    </div>
-                </div>
-
-                <div class="info-card">
-                    <div class="info-icon">🔗</div>
-                    <div class="info-content">
-                        <div class="info-title">OTA Access</div>
-                        <div class="info-description">ESP32 firmware update endpoint</div>
-                        <a href="https://firmware.turingco.ir" target="_blank" class="info-link" id="firmware_public_link">
-                            Open Firmware Server →
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="quick-actions">
-                <button class="action-btn" onclick="window.open('https://firmware.turingco.ir', '_blank')" id="open_firmware_btn">
-                    <span class="btn-icon">🌐</span>
-                    Open Firmware Server
-                </button>
-            </div>
-        </div>
-    </div>
-
-
+    </section>
 </div>
+
+<nav class="nav" aria-label="Sections">
+    <a href="#home" class="active"><i class="fa-solid fa-house"></i>Home</a>
+    <a href="#lights"><i class="fa-solid fa-lightbulb"></i>Lights</a>
+    <a href="#climate"><i class="fa-solid fa-fan"></i>Climate</a>
+    <a href="#more"><i class="fa-solid fa-door-open"></i>More</a>
+</nav>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
+
+<script>
+(function () {
+    'use strict';
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+    // ---------------------------------------------------------------- net
+    function handle(r) {
+        if (r.redirected && r.url.indexOf('/login') !== -1) {
+            location.href = '/login';
+            throw new Error('Signed out');
+        }
+        if (!r.ok) throw new Error('Request failed (' + r.status + ')');
+        setOnline(true);
+        return r.json();
+    }
+    function fail(e) {
+        if (e && e.name === 'TypeError') setOnline(false);
+        throw e;
+    }
+    function get(url) {
+        return fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(handle, fail);
+    }
+    function post(url, data, json) {
+        var opts = { method: 'POST', credentials: 'same-origin', headers: {} };
+        if (json) {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(data || {});
+        } else {
+            opts.body = new URLSearchParams(data || {});
+        }
+        return fetch(url, opts).then(handle, fail);
+    }
+    function setOnline(on) {
+        var c = $('#conn');
+        c.classList.toggle('offline', !on);
+        c.lastElementChild.textContent = on ? 'Online' : 'Offline';
+    }
+
+    var toastTimer;
+    function toast(msg, isErr) {
+        var t = $('#toast');
+        t.classList.toggle('err', !!isErr);
+        t.firstElementChild.className = 'fa-solid ' + (isErr ? 'fa-circle-exclamation' : 'fa-circle-check');
+        t.lastElementChild.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+    }
+    function vibrate() { if (navigator.vibrate) navigator.vibrate(12); }
+    function mmss(sec) {
+        sec = Math.max(0, Math.round(sec));
+        var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        return h ? h + ':' + pad(m) + ':' + pad(s) : pad(m) + ':' + pad(s);
+    }
+
+    // ---------------------------------------------------------------- clock
+    function tickClock() {
+        var d = new Date(), h = d.getHours(), m = d.getMinutes();
+        $('#clock').innerHTML = (h < 10 ? '0' : '') + h + '<span class="sep">:</span>' + (m < 10 ? '0' : '') + m;
+        var g = h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
+        $('#greeting').textContent = g;
+        $('#greeting_line').textContent = g + ' — here is your home';
+    }
+
+    function loadDateWeather() {
+        get('/get_date_weather').then(function (d) {
+            $('#shamsi_date').textContent = d.shamsi;
+            $('#gregorian_date').textContent = d.gregorian;
+            document.body.className = d.timeOfDay;
+            var w = d.weather || {};
+            $('#weather_icon').textContent = w.icon || '🌤️';
+            $('#weather_desc').textContent = w.description || '';
+            if (w.available === false) {
+                $('#weather_temp').textContent = '--°';
+                $('#weather_feels').textContent = '--';
+                $('#weather_humidity').textContent = '--';
+                $('#weather_wind').textContent = '--';
+            } else {
+                $('#weather_temp').textContent = w.temperature + '°';
+                $('#weather_feels').textContent = w.feels_like + '°';
+                $('#weather_humidity').textContent = w.humidity + '%';
+                $('#weather_wind').textContent = w.wind_speed + ' km/h';
+            }
+        }).catch(function () {});
+    }
+
+    // ---------------------------------------------------------------- lights
+    var lights = {};          // pin -> bool
+    var lightPending = {};    // pin -> time of the last local change
+    var currentMode = null;
+    var autoOn = false;
+
+    function renderLights() {
+        var total = 0, lit = 0;
+        $$('.room').forEach(function (room) {
+            var tiles = $$('.light', room), on = 0;
+            tiles.forEach(function (el) {
+                var isOn = !!lights[el.dataset.pin];
+                el.classList.toggle('on', isOn);
+                el.setAttribute('aria-pressed', isOn);
+                $('.light-state', el).textContent = isOn ? 'On' : 'Off';
+                if (isOn) on++;
+            });
+            var c = $('.count', room);
+            c.textContent = on + '/' + tiles.length;
+            c.classList.toggle('lit', on > 0);
+            $('.room-toggle', room).textContent = on ? 'All off' : 'All on';
+            total += tiles.length; lit += on;
+        });
+        $('#lights_meta').textContent = lit + ' of ' + total + ' on';
+        $('#q_lights_sub').textContent = lit ? lit + ' of ' + total + ' on' : 'All off';
+        $('#q_lights').classList.toggle('on', lit > 0);
+    }
+
+    function setLight(pin, on) {
+        lights[pin] = on;
+        lightPending[pin] = Date.now();
+        return post(on ? '/on' : '/off', { pin: pin }).catch(function () {
+            lights[pin] = !on;
+            renderLights();
+            toast('Could not reach that light', true);
+        });
+    }
+
+    $$('.light').forEach(function (el) {
+        el.addEventListener('click', function () {
+            vibrate();
+            setLight(el.dataset.pin, !lights[el.dataset.pin]);
+            renderLights();
+        });
+    });
+    $$('.room').forEach(function (room) {
+        $('.room-toggle', room).addEventListener('click', function () {
+            var tiles = $$('.light', room);
+            var anyOn = tiles.some(function (el) { return lights[el.dataset.pin]; });
+            tiles.forEach(function (el) { setLight(el.dataset.pin, !anyOn); });
+            renderLights();
+        });
+    });
+    $$('[data-all]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var on = b.dataset.all === 'on';
+            $$('.light').forEach(function (el) { lights[el.dataset.pin] = on; lightPending[el.dataset.pin] = Date.now(); });
+            currentMode = null;
+            renderLights(); renderScenes();
+            post('/set_light_status', { status: on ? 'on' : 'off' })
+                .then(function () { toast(on ? 'All lights on' : 'All lights off'); })
+                .catch(function () { toast('Could not switch the lights', true); loadStatus(); });
+        });
+    });
+
+    // ---------------------------------------------------------------- scenes
+    function renderScenes() {
+        $$('.scene').forEach(function (b) {
+            var a = b.dataset.mode === currentMode;
+            b.classList.toggle('active', a);
+            b.setAttribute('aria-pressed', a);
+        });
+        $('#auto_switch').setAttribute('aria-checked', autoOn);
+        var active = $('.scene.active');
+        $('#scene_meta').textContent = active ? active.textContent.trim() + ' active' : (autoOn ? 'Automatic' : '');
+    }
+    $$('.scene').forEach(function (b) {
+        b.addEventListener('click', function () {
+            vibrate();
+            var mode = b.dataset.mode, on = currentMode !== mode;
+            currentMode = on ? mode : null;
+            renderScenes();
+            post('/set_mode', { modeType: mode, status: on ? 'on' : 'off' })
+                .then(function () { toast(b.textContent.trim() + (on ? ' on' : ' off')); loadStatus(); })
+                .catch(function () { toast('Could not change the scene', true); loadStatus(); });
+        });
+    });
+    $('#auto_switch').addEventListener('click', function () {
+        autoOn = !autoOn;
+        renderScenes();
+        post('/set_mode', { modeType: 'AUTO_LIGHT_MODE', status: autoOn ? 'on' : 'off' })
+            .then(function () { toast(autoOn ? 'Automatic schedule on' : 'Automatic schedule off'); })
+            .catch(function () { autoOn = !autoOn; renderScenes(); toast('Could not change the schedule', true); });
+    });
+
+    // ---------------------------------------------------------------- cooler
+    var COOLER_MAX = {{ cooler_max }};
+    var cooler = { running: false, phase: 'off', settings: { fanLevel: 3, waterPump: false, fanBetween: false, length: 30, repeat: false, interval: 30 }, outputs: {} };
+    var coolerDeadline = null;   // ms timestamp the current phase ends
+    var coolerEditUntil = 0;     // ignore polled settings while the user is editing
+    var coolerBusy = false;
+    var sendTimer = null;
+
+    function acceptCooler(c) {
+        if (Date.now() < coolerEditUntil) c.settings = cooler.settings;
+        cooler = c;
+        coolerDeadline = c.secondsLeft != null ? Date.now() + c.secondsLeft * 1000 : null;
+        renderCooler();
+    }
+
+    function renderCooler() {
+        var s = cooler.settings, on = cooler.running;
+        $('#cooler_power').classList.toggle('on', on);
+        $('#cooler_power').classList.toggle('busy', coolerBusy);
+        $('#fan_value').textContent = s.fanLevel;
+        var r = $('#fan_range');
+        r.value = s.fanLevel;
+        r.style.setProperty('--pct', ((s.fanLevel - 1) / (COOLER_MAX - 1) * 100) + '%');
+        $('#fan_hint').textContent = on ? 'Applies instantly' : 'Used when you start';
+
+        var pump = !!s.waterPump;
+        var fanBtw = on ? !!s.fanBetween : !!(cooler.outputs && cooler.outputs.fanBetween);
+        setToggle($('#pump_toggle'), pump, on ? (pump ? 'On' : 'Off') : (pump ? 'On at start' : 'Off'));
+        setToggle($('#fanbtw_toggle'), fanBtw, fanBtw ? 'On' : 'Off');
+
+        $$('#length_chips .chip').forEach(function (c) { c.classList.toggle('active', +c.dataset.v === s.length); });
+        $$('#interval_chips .chip').forEach(function (c) { c.classList.toggle('active', +c.dataset.v === s.interval); });
+        $('#repeat_switch').setAttribute('aria-checked', !!s.repeat);
+        $('#repeat_box').classList.toggle('open', !!s.repeat);
+
+        var err = $('#cooler_error');
+        err.textContent = cooler.error ? 'Controller: ' + cooler.error : '';
+        err.classList.toggle('show', !!cooler.error);
+        renderCoolerPhase();
+    }
+
+    function renderCoolerPhase() {
+        var pill = $('#cooler_pill'), txt, sub;
+        var left = coolerDeadline ? (coolerDeadline - Date.now()) / 1000 : null;
+        pill.className = 'pill';
+        if (cooler.running && cooler.phase === 'cooling') {
+            pill.classList.add('cooling');
+            txt = 'Cooling' + (left != null ? ' · ' + mmss(left) + ' left' : '');
+            sub = 'Level ' + cooler.settings.fanLevel + (left != null ? ' · ' + mmss(left) : '');
+        } else if (cooler.running && cooler.phase === 'resting') {
+            pill.classList.add('resting');
+            txt = 'Resting' + (left != null ? ' · next in ' + mmss(left) : '');
+            sub = 'Resting' + (left != null ? ' · ' + mmss(left) : '');
+        } else {
+            txt = 'Off';
+            sub = 'Off · tap to start';
+        }
+        pill.lastElementChild.textContent = txt;
+        $('#q_cooler_sub').textContent = sub;
+        $('#q_cooler').classList.toggle('on', cooler.running);
+    }
+
+    function setToggle(el, on, label) {
+        el.setAttribute('aria-pressed', on);
+        $('small', el).textContent = label;
+    }
+
+    var pendingPatch = {};
+    function changeCooler(patch) {
+        for (var k in patch) { cooler.settings[k] = patch[k]; pendingPatch[k] = patch[k]; }
+        coolerEditUntil = Date.now() + 4000;
+        renderCooler();
+        clearTimeout(sendTimer);
+        sendTimer = setTimeout(function () {
+            // Only what changed: resending fanBetween with every edit would
+            // switch the channel fan while the cooler is off.
+            var body = Object.assign({ action: 'update' }, pendingPatch);
+            pendingPatch = {};
+            post('/cooler', body, true).then(function (d) {
+                coolerEditUntil = 0;
+                acceptCooler(d.cooler);
+            }).catch(function () { toast('Could not update the cooler', true); });
+        }, 350);
+    }
+
+    function toggleCooler() {
+        if (coolerBusy) return;
+        vibrate();
+        var starting = !cooler.running;
+        coolerBusy = true; renderCooler();
+        clearTimeout(sendTimer);
+        pendingPatch = {};
+        var body = starting ? Object.assign({ action: 'start' }, cooler.settings) : { action: 'stop' };
+        post('/cooler', body, true).then(function (d) {
+            coolerEditUntil = 0;
+            acceptCooler(d.cooler);
+            toast(starting ? 'Cooler started' : 'Cooler stopped');
+        }).catch(function () {
+            toast('Could not reach the cooler', true);
+        }).then(function () { coolerBusy = false; renderCooler(); });
+    }
+
+    $('#cooler_power').addEventListener('click', toggleCooler);
+    $('#q_cooler').addEventListener('click', toggleCooler);
+    $('#fan_down').addEventListener('click', function () {
+        vibrate(); changeCooler({ fanLevel: Math.max(1, cooler.settings.fanLevel - 1) });
+    });
+    $('#fan_up').addEventListener('click', function () {
+        vibrate(); changeCooler({ fanLevel: Math.min(COOLER_MAX, cooler.settings.fanLevel + 1) });
+    });
+    $('#fan_range').addEventListener('input', function () { changeCooler({ fanLevel: +this.value }); });
+    $('#pump_toggle').addEventListener('click', function () {
+        vibrate(); changeCooler({ waterPump: !cooler.settings.waterPump });
+    });
+    $('#fanbtw_toggle').addEventListener('click', function () {
+        vibrate();
+        var cur = this.getAttribute('aria-pressed') === 'true';
+        changeCooler({ fanBetween: !cur });
+        if (!cooler.running) cooler.outputs.fanBetween = !cur;
+        renderCooler();
+    });
+    $$('#length_chips .chip').forEach(function (c) {
+        c.addEventListener('click', function () { changeCooler({ length: +c.dataset.v }); });
+    });
+    $$('#interval_chips .chip').forEach(function (c) {
+        c.addEventListener('click', function () { changeCooler({ interval: +c.dataset.v }); });
+    });
+    $('#repeat_switch').addEventListener('click', function () { changeCooler({ repeat: !cooler.settings.repeat }); });
+
+    // ---------------------------------------------------------------- split AC
+    var split = { running: false };
+    function renderSplit() {
+        $('#split_power').classList.toggle('on', split.running);
+        var p = $('#split_pill');
+        p.className = 'pill' + (split.running ? ' cooling' : '');
+        p.lastElementChild.textContent = split.running ? 'On' : 'Off';
+    }
+    $('#split_power').addEventListener('click', function () {
+        var b = this;
+        if (b.classList.contains('busy')) return;
+        vibrate();
+        var on = !split.running;
+        b.classList.add('busy');
+        post('/set_airconditionerSplit', { status: on ? 'on' : 'off' }).then(function () {
+            split.running = on; renderSplit();
+            toast(on ? 'Split AC on' : 'Split AC off');
+        }).catch(function () { toast('Could not reach the split AC', true); })
+          .then(function () { b.classList.remove('busy'); });
+    });
+
+    // ---------------------------------------------------------------- doors
+    // First tap arms the button, second tap within 3 s opens - no more
+    // opening the door by brushing the screen.
+    $$('[data-door]').forEach(function (b) {
+        var timer, sub = $('small', b) || $('.q-sub', b), idle = sub.textContent;
+        b.addEventListener('click', function () {
+            if (!b.classList.contains('armed')) {
+                vibrate();
+                b.classList.add('armed');
+                sub.textContent = 'Tap again to open';
+                timer = setTimeout(function () { b.classList.remove('armed'); sub.textContent = idle; }, 3000);
+                return;
+            }
+            clearTimeout(timer);
+            b.classList.remove('armed');
+            b.classList.add('busy');
+            sub.textContent = 'Opening…';
+            var main = b.dataset.door === 'main';
+            post(main ? '/MainDoorToggle' : '/ParkingDoorToggle').then(function () {
+                if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+                toast(main ? 'Main door opened' : 'Parking door toggled');
+            }).catch(function () { toast('Could not reach the door', true); })
+              .then(function () { b.classList.remove('busy'); sub.textContent = idle; });
+        });
+    });
+
+    // ---------------------------------------------------------------- servers
+    function serverControl(id, statusUrl, toggleUrl, name, port) {
+        var row = $(id), sw = $('.switch', row), small = $('small', row), open = $('.open', row);
+        function render(running) {
+            sw.setAttribute('aria-checked', running);
+            small.textContent = running ? 'Running on port ' + port : 'Stopped';
+            small.classList.toggle('up', running);
+            open.classList.toggle('disabled', !running);
+        }
+        function load() { get(statusUrl).then(function (d) { render(d.running); }).catch(function () {}); }
+        sw.addEventListener('click', function () {
+            var on = sw.getAttribute('aria-checked') !== 'true';
+            sw.disabled = true;
+            post(toggleUrl, { action: on ? 'on' : 'off' }).then(function (d) {
+                if (d.success) { toast(d.message); render(d.running); }
+                else { toast(d.message, true); load(); }
+            }).catch(function () { toast('Could not toggle the ' + name, true); })
+              .then(function () { sw.disabled = false; });
+        });
+        load();
+        return load;
+    }
+    var loadUpload = serverControl('#srv_upload', '/get_upload_server_status', '/toggle_upload_server', 'upload server', 8000);
+    var loadFirmware = serverControl('#srv_firmware', '/get_firmware_server_status', '/toggle_firmware_server', 'firmware server', 5001);
+
+    // ---------------------------------------------------------------- status
+    function loadStatus() {
+        return get('/get_status').then(function (d) {
+            var now = Date.now();
+            for (var pin in d.lights) {
+                if (!lightPending[pin] || now - lightPending[pin] > 2500) lights[pin] = d.lights[pin];
+            }
+            currentMode = d.currentMode;
+            autoOn = !!d.autoLightMode;
+            if (d.cooler && !coolerBusy) acceptCooler(d.cooler);
+            if (d.acSplitState) { split.running = !!d.acSplitState.running; renderSplit(); }
+            renderLights(); renderScenes();
+        }).catch(function () {});
+    }
+
+    // ---------------------------------------------------------------- nav
+    var navLinks = $$('.nav a');
+    if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                navLinks.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id); });
+            });
+        }, { rootMargin: '-45% 0px -50% 0px' });
+        $$('section[id]').forEach(function (s) { io.observe(s); });
+    }
+
+    // ---------------------------------------------------------------- loops
+    var timers = [];
+    function startLoops() {
+        stopLoops();
+        loadStatus(); loadDateWeather(); loadUpload(); loadFirmware(); tickClock();
+        timers.push(setInterval(loadStatus, 3000));
+        timers.push(setInterval(loadDateWeather, 60000));
+        timers.push(setInterval(function () { loadUpload(); loadFirmware(); }, 10000));
+        timers.push(setInterval(function () { tickClock(); renderCoolerPhase(); }, 1000));
+    }
+    function stopLoops() { timers.forEach(clearInterval); timers = []; }
+    // Phones throttle background tabs anyway; stop polling and refresh on return
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stopLoops(); else startLoops();
+    });
+
+    renderLights(); renderScenes(); renderCooler(); renderSplit();
+    startLoops();
+})();
+</script>
 </body>
 </html>

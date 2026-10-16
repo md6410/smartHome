@@ -173,19 +173,12 @@ ok "application folders ready"
 # ---------------------------------------------------------------------
 # 4. Secret key
 # ---------------------------------------------------------------------
-say "[4/12] Flask secret key"
-CURRENT_KEY="$(grep -m1 "app.config\['SECRET_KEY'\]" "$INSTALL_DIR/app.py" \
-               | sed "s/.*= *'\([^']*\)'.*/\1/" || true)"
-if [[ "$CURRENT_KEY" == "CHANGE-THIS-TO-YOUR-GENERATED-SECRET-KEY" || \
-      "$CURRENT_KEY" == "e31e40a3927daed0780af88f7ad96abcd08e53d35f2b7846" ]]; then
-    NEW_KEY="$(python3 -c 'import os;print(os.urandom(24).hex())')"
-    cp "$INSTALL_DIR/app.py" "$BACKUP_DIR/app.py.orig" 2>/dev/null || \
-        sudo cp "$INSTALL_DIR/app.py" "$BACKUP_DIR/app.py.orig"
-    sed -i "s/$CURRENT_KEY/$NEW_KEY/" "$INSTALL_DIR/app.py"
-    ok "generated a fresh key - the committed one is public"
-else
-    ok "key already customised"
-fi
+say "[4/12] Secret keys"
+# Each server now creates its own random key in instance/ on first start
+# (local_secrets.py), so nothing in the code needs rewriting here.
+mkdir -p "$INSTALL_DIR/instance"
+chmod 700 "$INSTALL_DIR/instance"
+ok "keys will be generated in $INSTALL_DIR/instance on first start"
 
 # ---------------------------------------------------------------------
 # 5. Caddy
@@ -282,6 +275,7 @@ PartOf=smarthome-group.target
 Type=simple
 User=$USERNAME
 WorkingDirectory=$INSTALL_DIR
+Environment=SMARTHOME_DOMAIN=$BASE_DOMAIN
 ExecStart=/usr/bin/python3 $INSTALL_DIR/app.py
 Restart=always
 RestartSec=10
