@@ -5,6 +5,7 @@
 #   smarthome-update            pull the latest main and restart
 #   smarthome-update --rollback go back to the version before the last update
 #   smarthome-update --status   show the running version and services
+#   smarthome-update --restart  restart the services on the current code
 #
 # (or: bash ~/smartHome/update.sh ...)
 #
@@ -22,6 +23,7 @@
 # git pull replaces this file underneath it.
 main() {
 set -Eeuo pipefail
+FORCE_RESTART=0
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; MAGENTA='\033[0;35m'; NC='\033[0m'
@@ -39,15 +41,21 @@ LINK=/usr/local/bin/smarthome-update
 STATE_DIR=/var/lib/smarthome
 MANIFEST="$STATE_DIR/manifest"
 PREV_FILE="$SRC_DIR/instance/.previous_version"
+# The commit the services were last restarted on. A pull alone does not
+# change what is running, so this is compared with HEAD, not origin.
+DEPLOYED_FILE="$SRC_DIR/instance/.deployed_version"
 DROPIN=/etc/systemd/system/caddy.service.d/smarthome.conf
 
-# Services this checkout runs, and a URL each one must answer
+# Services this checkout runs, the port each listens on, a URL it must
+# answer, and the script it runs
 SERVICES=(smarthome chatserver proxyctl)
+declare -A PORT=([smarthome]=5000 [chatserver]=5554 [proxyctl]=8090)
 declare -A HEALTH=(
     [smarthome]="http://127.0.0.1:5000/login"
     [chatserver]="http://127.0.0.1:5554/login"
     [proxyctl]="http://127.0.0.1:8090/"
 )
+declare -A SCRIPT=([smarthome]=app.py [chatserver]=chatServer.py [proxyctl]=proxy_manager.py)
 
 installed() { systemctl list-unit-files "$1.service" 2>/dev/null | grep -q "^$1.service"; }
 
@@ -75,18 +83,63 @@ for f in sys.argv[1:]:
 sys.exit(bad)' 2>&1)" || { echo "$out"; return 1; }
 }
 
+# PID of whatever listens on a TCP port, empty if nothing does
+port_pid() { sudo ss -ltnpH "sport = :$1" 2>/dev/null | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2; }
+
+# True when the service itself (or its child) listens on its port, or
+# when the port owner cannot be read at all
+owned_by_service() {   # owned_by_service <service>
+    local main pid p
+    pid="$(port_pid "${PORT[$1]}")"
+    [[ -z "$pid" ]] && return 0
+    main="$(systemctl show -p MainPID --value "$1" 2>/dev/null || echo 0)"
+    p="$pid"
+    while [[ -n "$p" && "$p" != 0 && "$p" != 1 ]]; do
+        [[ "$p" == "$main" ]] && return 0
+        p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
+    done
+    return 1
+}
+
+# A copy of the app started by hand (python3 app.py) keeps the port, the
+# service cannot bind it, and the page you see is still the old one.
+free_port_from_strays() {   # free_port_from_strays <service>
+    local s="$1" port="${PORT[$1]}" pid args
+    owned_by_service "$s" && return 0
+    pid="$(port_pid "$port")"
+    args="$(ps -o args= -p "$pid" 2>/dev/null || true)"
+    if [[ "$args" == *"${SCRIPT[$s]}"* ]]; then
+        warn "an old copy of ${SCRIPT[$s]} outside systemd holds port $port (pid $pid) - stopping it"
+        sudo kill "$pid" 2>/dev/null || true
+        for _ in $(seq 1 10); do ps -p "$pid" >/dev/null 2>&1 || break; sleep 1; done
+        if ps -p "$pid" >/dev/null 2>&1; then sudo kill -9 "$pid" 2>/dev/null || true; fi
+        return 1    # restart the service so it takes the port
+    fi
+    warn "port $port is held by another program (pid $pid: $args)"
+    warn "$s cannot start until it is stopped"
+    return 0
+}
+
 restart_and_check() {
     local s url failed=0
     for s in "${SERVICES[@]}"; do
         installed "$s" || continue
         sudo systemctl restart "$s"
     done
+    sleep 2
+    for s in "${SERVICES[@]}"; do
+        installed "$s" || continue
+        free_port_from_strays "$s" || sudo systemctl restart "$s"
+    done
     # app.py loads OpenCV, which takes a while on a Pi
     for s in "${SERVICES[@]}"; do
         installed "$s" || continue
         url="${HEALTH[$s]}"
         for _ in $(seq 1 40); do
-            if systemctl is-active --quiet "$s" && curl -fs -o /dev/null --max-time 3 "$url"; then
+            # The port must belong to the service itself - a stray old copy
+            # answering the URL does not count
+            if systemctl is-active --quiet "$s" && curl -fs -o /dev/null --max-time 3 "$url" \
+               && owned_by_service "$s"; then
                 ok "$s is up"; continue 2
             fi
             sleep 1
@@ -106,8 +159,11 @@ go_back_to() {   # go_back_to <commit> <reason>
     warn "$2 - going back to $(git log -1 --format='%h %s' "$1")"
     git reset -q --hard "$1"
     restart_and_check || die "The previous version does not start either. Send the log above."
+    mark_deployed
     die "Update undone. Nothing changed. Send the output above to fix it."
 }
+
+mark_deployed() { mkdir -p "$SRC_DIR/instance"; git rev-parse HEAD > "$DEPLOYED_FILE"; }
 
 ensure_link() {
     [[ "$(readlink -f "$LINK" 2>/dev/null)" == "$SRC_DIR/update.sh" ]] && return
@@ -150,9 +206,11 @@ case "${1:-}" in
         git checkout -q "$BRANCH" 2>/dev/null || true
         git reset -q --hard "$PREV"
         restart_and_check || die "Rolled back, but a service did not start. Send the log above."
+        mark_deployed
         ok "rolled back. Run smarthome-update to come forward again."
         exit 0 ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+    --restart) FORCE_RESTART=1 ;;
     "") ;;
     *) die "Unknown option: $1  (try --help)" ;;
 esac
@@ -168,9 +226,20 @@ git fetch -q origin "$BRANCH" || die "Could not reach GitHub. Check the internet
 NEW="$(git rev-parse "origin/$BRANCH")"
 
 if [[ "$OLD" == "$NEW" ]]; then
-    ok "already on the latest version ($(git log -1 --format='%h %s'))"
+    ok "code is already the latest ($(git log -1 --format='%h %s'))"
     ensure_caddy_dropin
-    show_status
+    # Pulled by hand, or a restart that never happened: the code on disk
+    # is new but the services still run the old one from memory.
+    if [[ "${FORCE_RESTART:-0}" == 1 || "$(cat "$DEPLOYED_FILE" 2>/dev/null)" != "$OLD" ]]; then
+        warn "the running services may be older than this code - restarting them"
+        compile_check || die "The code on disk has a syntax error - services left as they are."
+        restart_and_check || die "A service did not start. Send the output above."
+        mark_deployed
+        ok "services now run $(git log -1 --format='%h')"
+        echo "  Refresh the page on your phone to load the new version."
+    else
+        show_status
+    fi
     exit 0
 fi
 
@@ -212,6 +281,7 @@ ensure_caddy_dropin
 # ---------------------------------------------------------------------
 say "[5/5] Restarting"
 restart_and_check || go_back_to "$OLD" "A service did not start"
+mark_deployed
 
 echo
 echo -e "${GREEN}==============================================${NC}"

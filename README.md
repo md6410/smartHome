@@ -133,9 +133,14 @@ packages only when `requirements.txt` changed, refuses code that does not
 compile, restarts the services and checks each one answers. If any of that
 fails it puts the previous version back on its own.
 
+It also restarts when the code was pulled by hand but the services still run
+the old version, and stops a hand-started copy of a server (for example
+`python3 app.py`) that keeps the port from the real service.
+
 ```bash
 smarthome-update --rollback   # back to the version before the last update
 smarthome-update --status     # running version and service state
+smarthome-update --restart    # restart the services on the code already pulled
 ```
 
 `install.sh` creates the `smarthome-update` command. On an older install,
