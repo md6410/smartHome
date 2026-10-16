@@ -148,6 +148,32 @@ run `bash ~/smartHome/update.sh` once and it creates it.
 
 ---
 
+## Fingerprint login
+
+Sign in to the control panel with a fingerprint, face or phone PIN
+(WebAuthn passkeys, the same design as 8soda.ir).
+
+1. Open the panel at `https://home.<your domain>` on the phone and sign in
+   with your password once.
+2. Tap **Turn on** on the banner, or **More → Fingerprint login → Turn on
+   for this device**, and confirm with your fingerprint.
+3. From then on the login page asks for the fingerprint by itself.
+
+It only works on the https address: browsers refuse passkeys on plain http
+and on the LAN IP, and the card says so there. The key stays in the phone's
+secure hardware; the Pi stores only public keys, in
+`instance/passkeys.db`. Remove a lost phone from the same card.
+
+Needs `python3-cryptography` (installed by `install.sh` and
+`smarthome-update`). The address keys are bound to defaults to
+`home.$SMARTHOME_DOMAIN`; override with `SMARTHOME_PASSKEY_RP_ID` (and
+`SMARTHOME_PASSKEY_ORIGINS`) in `smarthome.service` if you use another one.
+
+Eight failed sign-ins (password or fingerprint) from one address lock that
+address out for 15 minutes.
+
+---
+
 ## Uninstall
 
 ```bash
@@ -207,6 +233,7 @@ smartHome/
 ├── update.sh               one-command update, auto-rollback
 ├── requirements.txt
 ├── app.py                  control system + dashboard        :5000
+├── passkeys.py             fingerprint login (WebAuthn)
 ├── chatServer.py           chat, Socket.IO                    :5554
 ├── uploadServer.py         file uploads                       :8000
 ├── firmware_server-3.py    firmware OTA                       :5001

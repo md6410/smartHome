@@ -133,6 +133,9 @@ sudo apt-get install -y \
     libjpeg-dev libpng-dev libtiff-dev \
     libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
     debian-keyring debian-archive-keyring apt-transport-https
+# Fingerprint login verifies signatures with it; from apt so the Pi never
+# has to compile it
+sudo apt-get install -y python3-cryptography || warn "python3-cryptography unavailable - fingerprint login stays off"
 sudo apt-get install -y python3-rpi.gpio || warn "python3-rpi.gpio unavailable (not a Pi?) - continuing"
 ok "packages installed"
 

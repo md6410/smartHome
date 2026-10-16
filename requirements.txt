@@ -11,6 +11,9 @@ jdatetime
 requests
 pyserial
 opencv-python
+# Fingerprint login. install.sh and update.sh take it from apt
+# (python3-cryptography) so a Pi never has to compile it.
+cryptography
 # Raspberry Pi GPIO. Installed from apt as python3-rpi.gpio by install.sh;
 # pip falls back to this on a Pi and skips it elsewhere.
 RPi.GPIO; platform_machine == "armv7l" or platform_machine == "aarch64"

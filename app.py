@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_from_directory, Response, jsonify, redirect, abort
+from flask import Flask, render_template, request, send_from_directory, Response, jsonify, redirect, abort, session
 import RPi.GPIO as GPIO
 from datetime import datetime
 import logging
@@ -14,8 +14,10 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_bcrypt import Bcrypt
 import subprocess
 import signal
+from urllib.parse import urlparse
 
 from local_secrets import load_secret
+from passkeys import Passkeys, PasskeyError, LoginGate, DEVICE_COOKIE, DEVICE_TTL
 
 # =======================
 # CONFIGURATION
@@ -27,6 +29,10 @@ app = Flask(__name__)
 
 # Security configuration - a random key per install, see local_secrets.py
 app.config['SECRET_KEY'] = load_secret('smarthome')
+# Cookies only travel on requests that start on this site. Without this a
+# page elsewhere could make a logged-in browser POST /MainDoorToggle.
+app.config.update(SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_HTTPONLY=True,
+                  REMEMBER_COOKIE_SAMESITE='Lax', REMEMBER_COOKIE_HTTPONLY=True)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -34,6 +40,12 @@ login_manager.login_view = 'login'
 
 # Domain the upload and firmware servers are published under (install.sh sets it)
 BASE_DOMAIN = os.environ.get('SMARTHOME_DOMAIN', 'turingco.ir')
+
+# Fingerprint login is bound to one address. Taken from configuration and
+# never from the Host header, which whoever sends the request controls.
+PASSKEY_RP_ID = os.environ.get('SMARTHOME_PASSKEY_RP_ID', f'home.{BASE_DOMAIN}')
+PASSKEY_ORIGINS = [o.strip() for o in os.environ.get(
+    'SMARTHOME_PASSKEY_ORIGINS', f'https://{PASSKEY_RP_ID}').split(',') if o.strip()]
 
 # Simple user database (in memory)
 # To add more users, add entries like: 'username': bcrypt.generate_password_hash('password').decode('utf-8')
@@ -57,6 +69,32 @@ def load_user(user_id):
 # Configure logging
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+passkeys = Passkeys(os.path.join(base_dir, 'instance', 'passkeys.db'),
+                    PASSKEY_RP_ID, PASSKEY_ORIGINS, 'Parsa Home', app.config['SECRET_KEY'])
+login_gate = LoginGate()
+if not passkeys.available:
+    logger.warning("Fingerprint login is off: install python3-cryptography to enable it")
+
+@app.before_request
+def same_origin_posts_only():
+    """Refuse state-changing requests sent from another site's page."""
+    if request.method != 'POST':
+        return None
+    origin = request.headers.get('Origin')
+    if origin and origin != 'null' and urlparse(origin).netloc != request.host:
+        logger.warning(f"Blocked cross-site POST to {request.path} from {origin}")
+        abort(403)
+    return None
+
+def client_ip():
+    # Behind Caddy every request comes from 127.0.0.1; the visitor is in
+    # X-Forwarded-For, which only a local proxy is trusted to set
+    if request.remote_addr in ('127.0.0.1', '::1'):
+        fwd = request.headers.get('X-Forwarded-For', '')
+        if fwd:
+            return fwd.split(',')[-1].strip()
+    return request.remote_addr or ''
 
 # =======================
 # GLOBAL STATE VARIABLES
@@ -690,30 +728,158 @@ auto_light = AutoLightController()
 # =======================
 # AUTHENTICATION ROUTES
 # =======================
+def remember_device(response, username):
+    """Note on this browser which account it has a fingerprint key for."""
+    if passkeys.available and passkeys.count(username) > 0:
+        response.set_cookie(DEVICE_COOKIE, passkeys.device_cookie_value(username),
+                            max_age=DEVICE_TTL, secure=True, httponly=True, samesite='Lax')
+    return response
+
+def login_page(error=None):
+    # Start the fingerprint prompt by itself only when this browser is
+    # known to hold a registered key - a prompt that ends in "no passkeys
+    # found" is the worst thing to greet someone with. And not straight
+    # after logging out, or the logout button would log you back in.
+    auto = False
+    if passkeys.available and not session.pop('pk_no_auto', False):
+        known = passkeys.device_user(request.cookies.get(DEVICE_COOKIE))
+        auto = bool(known and known in users_db and passkeys.count(known) > 0)
+    return render_template('home_login.html', error=error,
+                           pk_ready=passkeys.available, pk_rp_id=PASSKEY_RP_ID, pk_auto=auto)
+
+def locked_message(seconds):
+    return f"Too many failed attempts. Try again in {max(1, (seconds + 59) // 60)} minute(s)."
+
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        who = client_ip()
+        wait = login_gate.locked_for(who)
+        if wait:
+            return login_page(locked_message(wait)), 429
+
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         remember = request.form.get('remember') == 'on'
 
         if username in users_db and bcrypt.check_password_hash(users_db[username], password):
-            user = User(username)
-            login_user(user, remember=remember)
+            login_gate.reset(who)
+            login_user(User(username), remember=remember)
             logger.info(f"User {username} logged in successfully")
-            return redirect('/')
+            return remember_device(redirect('/'), username)
         else:
-            logger.warning(f"Failed login attempt for user: {username}")
-            return render_template('home_login.html', error='Invalid username or password')
+            login_gate.fail(who)
+            logger.warning(f"Failed login attempt for user: {username} from {who}")
+            return login_page('Invalid username or password')
 
-    return render_template('home_login.html')
+    if current_user.is_authenticated:
+        return redirect('/')
+    return login_page()
 
 @app.route("/logout")
 @login_required
 def logout():
     logger.info(f"User {current_user.id} logged out")
     logout_user()
+    session['pk_no_auto'] = True
     return redirect('/login')
+
+# =======================
+# FINGERPRINT LOGIN (WebAuthn passkeys)
+# =======================
+def pk_reply(ok=True, status=200, **data):
+    data['ok'] = ok
+    resp = jsonify(data)
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp, status
+
+def pk_body():
+    body = request.get_json(silent=True)
+    return body if isinstance(body, dict) else {}
+
+@app.route("/passkey/login/options", methods=['POST'])
+def passkey_login_options():
+    if not passkeys.available:
+        return pk_reply(False, 404, error='Fingerprint login is not set up on this server.')
+    wait = login_gate.locked_for(client_ip())
+    if wait:
+        return pk_reply(False, 429, error=locked_message(wait))
+    known = passkeys.device_user(request.cookies.get(DEVICE_COOKIE))
+    handle, options = passkeys.request_options(known if known in users_db else None)
+    session['pk_ch'] = handle
+    return pk_reply(options=options)
+
+@app.route("/passkey/login/verify", methods=['POST'])
+def passkey_login_verify():
+    if not passkeys.available:
+        return pk_reply(False, 404, error='Fingerprint login is not set up on this server.')
+    who = client_ip()
+    wait = login_gate.locked_for(who)
+    if wait:
+        return pk_reply(False, 429, error=locked_message(wait))
+    try:
+        username = passkeys.login_verify(session.pop('pk_ch', None), pk_body())
+    except PasskeyError as e:
+        login_gate.fail(who)
+        logger.warning(f"Fingerprint login failed from {who}: {e}")
+        return pk_reply(False, 401, error=str(e))
+    if username not in users_db:
+        login_gate.fail(who)
+        return pk_reply(False, 401, error='The account for this device no longer exists.')
+    login_gate.reset(who)
+    login_user(User(username), remember=True)
+    logger.info(f"User {username} logged in with fingerprint")
+    resp, status = pk_reply(go='/')
+    return remember_device(resp, username), status
+
+@app.route("/passkey/register/options", methods=['POST'])
+@login_required
+def passkey_register_options():
+    if not passkeys.available:
+        return pk_reply(False, 404, error='Fingerprint login is not set up on this server.')
+    handle, options = passkeys.create_options(current_user.id, compat=bool(pk_body().get('compat')))
+    session['pk_ch'] = handle
+    return pk_reply(options=options)
+
+@app.route("/passkey/register/verify", methods=['POST'])
+@login_required
+def passkey_register_verify():
+    if not passkeys.available:
+        return pk_reply(False, 404, error='Fingerprint login is not set up on this server.')
+    try:
+        result = passkeys.register_verify(current_user.id, session.pop('pk_ch', None), pk_body(),
+                                          request.headers.get('User-Agent', ''))
+    except PasskeyError as e:
+        return pk_reply(False, 400, error=str(e))
+    logger.info(f"User {current_user.id} registered a fingerprint device")
+    resp, status = pk_reply(**result)
+    return remember_device(resp, current_user.id), status
+
+@app.route("/passkey/devices", methods=['GET'])
+@login_required
+def passkey_devices():
+    if not passkeys.available:
+        return pk_reply(devices=[], ready=False)
+    devices = [{'id': k['id'], 'label': k['label'], 'created': k['created_at'][:10],
+                'lastUsed': (k['last_used_at'] or '')[:10], 'localOnly': k['discoverable'] == 0}
+               for k in passkeys.list(current_user.id)]
+    return pk_reply(devices=devices, ready=True)
+
+@app.route("/passkey/remove", methods=['POST'])
+@login_required
+def passkey_remove():
+    try:
+        key_id = int(pk_body().get('id'))
+    except (TypeError, ValueError):
+        return pk_reply(False, 400, error='Unknown device.')
+    if not passkeys.remove(current_user.id, key_id):
+        return pk_reply(False, 404, error='That device was already removed.')
+    resp, status = pk_reply(msg='Device removed.')
+    # No keys left: the note on this browser has nothing to point at
+    if passkeys.count(current_user.id) == 0 and \
+            passkeys.device_user(request.cookies.get(DEVICE_COOKIE)) == current_user.id:
+        resp.delete_cookie(DEVICE_COOKIE)
+    return resp, status
 
 # =======================
 # WEB ROUTES
@@ -725,9 +891,17 @@ def index():
         (area, icon, [(pinToType[key], label) for key, label in lights])
         for area, icon, lights in LIGHT_GROUPS
     ]
-    return render_template('index.html', username=current_user.id,
-                           light_groups=light_groups, scenes=SCENES,
-                           cooler_max=COOLER_MAX_LEVEL, base_domain=BASE_DOMAIN)
+    resp = app.make_response(render_template(
+        'index.html', username=current_user.id,
+        light_groups=light_groups, scenes=SCENES,
+        cooler_max=COOLER_MAX_LEVEL, base_domain=BASE_DOMAIN,
+        pk_ready=passkeys.available, pk_rp_id=PASSKEY_RP_ID))
+    # Sessions opened before a key was registered get the device note too,
+    # so the next login can start the fingerprint prompt by itself
+    if passkeys.available and \
+            passkeys.device_user(request.cookies.get(DEVICE_COOKIE)) != current_user.id:
+        remember_device(resp, current_user.id)
+    return resp
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):

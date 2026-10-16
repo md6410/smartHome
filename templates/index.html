@@ -40,6 +40,7 @@ body.afternoon { --glow-a: #a8621d; --glow-b: #6b2a8f; }
 body.night     { --glow-a: #2c2a7f; --glow-b: #0f3d6e; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; scroll-padding-top: 16px; }
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Vazirmatn', Tahoma, sans-serif;
@@ -233,6 +234,36 @@ a { color: inherit; text-decoration: none; }
 .server .open { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
 .server .open.disabled { opacity: .35; pointer-events: none; }
 
+/* ---------- fingerprint login ---------- */
+.pk-card { padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); margin-bottom: 14px; }
+.pk-head { display: flex; align-items: center; gap: 14px; }
+.pk-head .s-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); font-size: 1.15rem; }
+.pk-head .s-body { flex: 1; min-width: 0; }
+.pk-head b { display: block; font-size: 0.95rem; }
+.pk-head small { font-size: 0.78rem; color: var(--faint); }
+.pk-add { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 14px; padding: 13px; border-radius: 14px;
+          font-weight: 700; color: #0b1020; background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .1s; }
+.pk-add:active { transform: scale(.98); }
+.pk-add:disabled { opacity: .7; }
+.pk-why { margin-top: 12px; font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+.pk-note { margin-top: 10px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+.pk-note--ok { color: var(--ok); }
+.pk-note--bad { color: var(--danger); }
+.pk-list:not(:empty) { margin-top: 12px; border-top: 1px solid var(--border); }
+.pk-dev { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+.pk-dev:last-child { border-bottom: none; }
+.pk-dev b { display: block; font-size: 0.88rem; }
+.pk-dev small { font-size: 0.74rem; color: var(--faint); }
+.pk-del { min-width: 38px; height: 38px; padding: 0 10px; border-radius: 10px; background: var(--surface-2); color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+.pk-del.armed { background: rgba(251,113,133,.18); color: var(--danger); }
+.pk-offer { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px; border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, rgba(139,155,255,.18), rgba(178,141,255,.12)); border: 1px solid rgba(139,155,255,.35); }
+.pk-offer i.lead { font-size: 1.4rem; color: var(--accent); }
+.pk-offer .txt { flex: 1; font-size: 0.85rem; line-height: 1.4; }
+.pk-offer .txt b { display: block; }
+.pk-offer a { font-weight: 700; color: var(--accent); font-size: 0.85rem; white-space: nowrap; }
+.pk-offer button { width: 32px; height: 32px; border-radius: 10px; color: var(--faint); }
+
 /* ---------- nav ---------- */
 .nav { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50;
        display: flex; gap: 4px; padding: 6px; border-radius: 22px; background: rgba(17, 22, 42, 0.82); border: 1px solid var(--border);
@@ -333,6 +364,13 @@ a { color: inherit; text-decoration: none; }
                     <div class="stat"><span>Wind</span><b id="weather_wind">--</b></div>
                 </div>
             </div>
+        </div>
+
+        <div class="pk-offer" id="pk_offer" hidden>
+            <i class="fa-solid fa-fingerprint lead"></i>
+            <div class="txt"><b>Sign in with your fingerprint</b>No password next time on this phone.</div>
+            <a href="#more" id="pk_offer_go">Turn on</a>
+            <button id="pk_offer_x" aria-label="Not now"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <div class="quick">
@@ -531,6 +569,24 @@ a { color: inherit; text-decoration: none; }
             </button>
         </div>
 
+        {% if pk_ready %}
+        <div class="pk-card" id="pk_card" data-pk-manage data-pk-rp="{{ pk_rp_id }}">
+            <div class="pk-head">
+                <span class="s-icon"><i class="fa-solid fa-fingerprint"></i></span>
+                <div class="s-body">
+                    <b>Fingerprint login</b>
+                    <small>Sign in with fingerprint, face or phone PIN · <span data-pk-meta>…</span></small>
+                </div>
+            </div>
+            <button type="button" class="pk-add" data-pk-go hidden>
+                <i class="fa-solid fa-fingerprint"></i><span data-pk-label>Turn on for this device</span>
+            </button>
+            <p class="pk-why" data-pk-why hidden></p>
+            <p class="pk-note" data-pk-note hidden></p>
+            <div class="pk-list" data-pk-list></div>
+        </div>
+        {% endif %}
+
         <div class="server" id="srv_upload">
             <span class="s-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
             <div class="s-body">
@@ -561,6 +617,7 @@ a { color: inherit; text-decoration: none; }
 
 <div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
 
+{% if pk_ready %}<script src="{{ url_for('static', filename='js/passkey.js') }}"></script>{% endif %}
 <script>
 (function () {
     'use strict';
@@ -987,6 +1044,23 @@ a { color: inherit; text-decoration: none; }
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) stopLoops(); else startLoops();
     });
+
+    // ---------------------------------------------------------------- fingerprint offer
+    // Shown once on a phone that can do it but has no key yet; "x" hides it for good
+    var pkCard = $('#pk_card');
+    if (pkCard && window.HomePasskey) {
+        var offer = $('#pk_offer'), OFFER_KEY = 'pk_offer_dismissed';
+        var dismissed = function () { try { return localStorage.getItem(OFFER_KEY) === '1'; } catch (e) { return true; } };
+        pkCard.addEventListener('pk:devices', function (e) {
+            if (e.detail.length || dismissed()) { offer.hidden = true; return; }
+            HomePasskey.supported(pkCard.dataset.pkRp).then(function (ok) { offer.hidden = !ok; });
+        });
+        $('#pk_offer_x').addEventListener('click', function () {
+            try { localStorage.setItem(OFFER_KEY, '1'); } catch (e) {}
+            offer.hidden = true;
+        });
+        $('#pk_offer_go').addEventListener('click', function () { offer.hidden = true; });
+    }
 
     renderLights(); renderScenes(); renderCooler(); renderSplit();
     startLoops();

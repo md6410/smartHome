@@ -165,6 +165,20 @@ go_back_to() {   # go_back_to <commit> <reason>
 
 mark_deployed() { mkdir -p "$SRC_DIR/instance"; git rev-parse HEAD > "$DEPLOYED_FILE"; }
 
+# Python modules that come from apt rather than pip, so the Pi never
+# compiles them. Checked on every run: cheap, and an update that starts
+# needing one installs it without anyone remembering to.
+declare -A APT_PYTHON=([cryptography]=python3-cryptography)
+ensure_apt_python() {
+    local mod pkg missing=()
+    for mod in "${!APT_PYTHON[@]}"; do
+        python3 -c "import $mod" 2>/dev/null || missing+=("${APT_PYTHON[$mod]}")
+    done
+    (( ${#missing[@]} )) || return 0
+    say "  installing ${missing[*]}"
+    sudo apt-get install -y "${missing[@]}" || warn "could not install ${missing[*]} - fingerprint login stays off"
+}
+
 ensure_link() {
     [[ "$(readlink -f "$LINK" 2>/dev/null)" == "$SRC_DIR/update.sh" ]] && return
     sudo ln -sf "$SRC_DIR/update.sh" "$LINK"
@@ -232,6 +246,7 @@ if [[ "$OLD" == "$NEW" ]]; then
     # is new but the services still run the old one from memory.
     if [[ "${FORCE_RESTART:-0}" == 1 || "$(cat "$DEPLOYED_FILE" 2>/dev/null)" != "$OLD" ]]; then
         warn "the running services may be older than this code - restarting them"
+        ensure_apt_python
         compile_check || die "The code on disk has a syntax error - services left as they are."
         restart_and_check || die "A service did not start. Send the output above."
         mark_deployed
@@ -263,13 +278,16 @@ ok "now at $(git log -1 --format='%h  %s')"
 
 # ---------------------------------------------------------------------
 say "[3/5] Python packages"
+ensure_apt_python
 if git diff --quiet "$OLD" HEAD -- requirements.txt; then
     ok "requirements.txt unchanged - skipped"
 else
     if pip3 install --break-system-packages --dry-run pip >/dev/null 2>&1; then PIPFLAG="--break-system-packages"; else PIPFLAG=""; fi
     # shellcheck disable=SC2086
-    pip3 install $PIPFLAG -r requirements.txt || go_back_to "$OLD" "Package install failed"
-    ok "packages installed"
+    # Not fatal: PyPI is often unreachable from here, and a package the
+    # app really cannot start without is caught by the restart check below
+    if pip3 install $PIPFLAG -r requirements.txt; then ok "packages installed"
+    else warn "some packages did not install - continuing, the restart check decides"; fi
 fi
 
 # ---------------------------------------------------------------------
