@@ -952,30 +952,85 @@ a { color: inherit; text-decoration: none; }
     });
 
     // ---------------------------------------------------------------- doors
-    // First tap arms the button, second tap within 3 s opens - no more
-    // opening the door by brushing the screen.
+    // With fingerprint login on, a door opens only after the fingerprint -
+    // the server refuses it otherwise. Without it (or on the LAN address,
+    // where browsers allow no fingerprints) the first tap arms the button
+    // and a second tap within 3 s opens: no opening by brushing the screen.
+    var doorPk = {{ 'true' if door_pk else 'false' }} && !!window.HomePasskey;
+    var doorButtons = [];
+    function doorLabels() {
+        doorButtons.forEach(function (d) {
+            d.idle = doorPk ? 'Tap, then fingerprint' : 'Tap to open';
+            if (!d.b.classList.contains('busy') && !d.b.classList.contains('armed')) d.sub.textContent = d.idle;
+        });
+    }
     $$('[data-door]').forEach(function (b) {
-        var timer, sub = $('small', b) || $('.q-sub', b), idle = sub.textContent;
+        var d = { b: b, sub: $('small', b) || $('.q-sub', b), idle: '' }, timer;
+        doorButtons.push(d);
+        var main = b.dataset.door === 'main';
+        var action = main ? 'door:main' : 'door:parking';
+        var url = main ? '/MainDoorToggle' : '/ParkingDoorToggle';
+
+        function send(assertion) {
+            return fetch(url, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(assertion ? { assertion: assertion } : {})
+            }).then(function (r) {
+                if (r.redirected && r.url.indexOf('/login') !== -1) { location.href = '/login'; return {}; }
+                return r.json().catch(function () { return { error: 'Could not reach the door' }; });
+            });
+        }
+        function done(r) {
+            if (r.ok || r.status === 'success') {
+                if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+                toast(main ? 'Main door opened' : 'Parking door toggled');
+                return;
+            }
+            if (r.needFingerprint && window.HomePasskey) {
+                // Fingerprint was turned on in another tab or on another phone
+                doorPk = true; doorLabels();
+                toast('This door now needs your fingerprint - tap it again', true);
+                return;
+            }
+            toast(r.error || 'Could not reach the door', true);
+        }
+        function finish() { b.classList.remove('busy'); d.sub.textContent = d.idle; }
+
         b.addEventListener('click', function () {
+            vibrate();
+            if (doorPk) {
+                b.classList.add('busy');
+                d.sub.textContent = 'Confirm with fingerprint…';
+                HomePasskey.confirm(action).then(function (a) {
+                    d.sub.textContent = 'Opening…';
+                    return send(a);
+                }).then(done).catch(function (e) {
+                    toast(HomePasskey.message(e), true);
+                }).then(finish);
+                return;
+            }
             if (!b.classList.contains('armed')) {
-                vibrate();
                 b.classList.add('armed');
-                sub.textContent = 'Tap again to open';
-                timer = setTimeout(function () { b.classList.remove('armed'); sub.textContent = idle; }, 3000);
+                d.sub.textContent = 'Tap again to open';
+                timer = setTimeout(function () { b.classList.remove('armed'); d.sub.textContent = d.idle; }, 3000);
                 return;
             }
             clearTimeout(timer);
             b.classList.remove('armed');
             b.classList.add('busy');
-            sub.textContent = 'Opening…';
-            var main = b.dataset.door === 'main';
-            post(main ? '/MainDoorToggle' : '/ParkingDoorToggle').then(function () {
-                if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
-                toast(main ? 'Main door opened' : 'Parking door toggled');
-            }).catch(function () { toast('Could not reach the door', true); })
-              .then(function () { b.classList.remove('busy'); sub.textContent = idle; });
+            d.sub.textContent = 'Opening…';
+            send().then(done).catch(function () { toast('Could not reach the door', true); }).then(finish);
         });
     });
+    doorLabels();
+    var pkManage = $('#pk_card');
+    if (pkManage && window.HomePasskey) {
+        pkManage.addEventListener('pk:devices', function (e) {
+            if (!e.detail.length) { doorPk = false; doorLabels(); return; }
+            HomePasskey.supported(pkManage.dataset.pkRp).then(function (ok) { doorPk = ok; doorLabels(); });
+        });
+    }
 
     // ---------------------------------------------------------------- servers
     function serverControl(id, statusUrl, toggleUrl, name, port) {

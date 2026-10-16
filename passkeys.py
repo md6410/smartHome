@@ -441,6 +441,38 @@ class Passkeys:
 
     def login_verify(self, handle, resp):
         """Returns the username the signature belongs to."""
+        return self._verify_assertion(handle, resp, 'login')['username']
+
+    # ------------------------------------------------------ confirmations
+    # The same fingerprint signature, used to approve one action (opening a
+    # door) by someone already signed in. The challenge names the action and
+    # the account, so a signature for the parking door cannot open the
+    # front door, and nobody else's key can approve it.
+    def confirm_options(self, username, action):
+        keys = self.list(username)
+        if not keys:
+            raise PasskeyError('Turn on fingerprint login first.')
+        handle, challenge = self._challenge_new('confirm:' + action, username)
+        allow = []
+        for k in keys:
+            row = {'type': 'public-key', 'id': k['cred_id']}
+            if k['transports']:
+                row['transports'] = k['transports'].split(',')
+            allow.append(row)
+        return handle, {
+            'challenge': challenge,
+            'rpId': self.rp_id,
+            'timeout': 60000,
+            'userVerification': 'required',
+            'allowCredentials': allow,
+        }
+
+    def confirm_verify(self, username, handle, resp, action):
+        k = self._verify_assertion(handle, resp, 'confirm:' + action, username)
+        if k['username'] != username:
+            raise PasskeyError('That fingerprint belongs to another account.')
+
+    def _verify_assertion(self, handle, resp, purpose, username=None):
         cred_id = str(resp.get('id') or '')
         client_raw = b64u_decode(resp.get('clientDataJSON'))
         auth_raw = b64u_decode(resp.get('authenticatorData'))
@@ -455,7 +487,9 @@ class Passkeys:
                 self._challenges.pop(handle or '', None)
             raise PasskeyError('This device is not registered to any account.')
 
-        self._check_client_data(client_raw, 'webauthn.get', handle, 'login')
+        ch = self._check_client_data(client_raw, 'webauthn.get', handle, purpose)
+        if username is not None and ch['user'] != username:
+            raise PasskeyError('This request expired. Please try again.')
         ad = parse_auth_data(auth_raw)
         if not hmac.compare_digest(hashlib.sha256(self.rp_id.encode()).digest(), ad['rp_id_hash']):
             raise PasskeyError('This key was made for another site.')
@@ -476,7 +510,7 @@ class Passkeys:
         with self._db() as c:
             c.execute('UPDATE passkeys SET sign_count=?, last_used_at=? WHERE id=?',
                       (max(now, was), datetime.now().isoformat(timespec='seconds'), k['id']))
-        return k['username']
+        return dict(k)
 
     # -------------------------------------------------------- device note
     # A signed cookie saying "this browser has a key for <user>". It opens

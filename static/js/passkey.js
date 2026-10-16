@@ -70,7 +70,10 @@
   function humanError(e, kind) {
     if (e && e.pkSaid && e.message) return e.message;
     var n = (e && e.name) || '';
-    if (n === 'NotAllowedError' || n === 'AbortError') return kind === 'login' ? NOT_FOUND_HINT : '';
+    if (n === 'NotAllowedError' || n === 'AbortError') {
+      if (kind === 'confirm') return 'Not opened - the fingerprint was cancelled or not recognised.';
+      return kind === 'login' ? NOT_FOUND_HINT : '';
+    }
     if (n === 'InvalidStateError') return 'This device is already registered. Remove it from the list below and add it again if login does not work.';
     if (n === 'NotSupportedError') return 'This device does not support fingerprint or face login.';
     if (n === 'SecurityError') return 'Open the panel from its https address to use fingerprint login.';
@@ -156,11 +159,23 @@
   /* ---------- login page ---------- */
   function bindLogin(box) {
     var rp = box.dataset.pkRp, btn = box.querySelector('[data-pk-go]');
+    var tap = document.querySelector('[data-pk-tap]');
     if (!btn || !onRightHost(rp)) return;
     hasPlatform().then(function (can) {
       if (!can) return;
       box.hidden = false;
-      function go() {
+
+      function showTap(waiting) {
+        if (!tap) return;
+        tap.querySelector('[data-pk-tap-text]').textContent =
+          waiting ? 'Waiting for your fingerprint…' : 'Tap anywhere to sign in with your fingerprint';
+        tap.classList.toggle('waiting', !!waiting);
+        tap.hidden = false;
+      }
+      function hideTap() { if (tap) tap.hidden = true; }
+
+      function go(fromAuto) {
+        var t0 = Date.now();
         setNote(box, '');
         busy(btn, true);
         return login().then(function (r) {
@@ -169,15 +184,39 @@
             location.href = r.go || '/';
             return;
           }
+          hideTap();
           busy(btn, false);
           setNote(box, (r && r.error) || 'Sign-in failed.', 'bad');
         }).catch(function (e) {
           busy(btn, false);
-          var soft = e && (e.name === 'NotAllowedError' || e.name === 'AbortError');
-          setNote(box, humanError(e, 'login'), soft ? '' : 'bad');
+          var refused = e && (e.name === 'NotAllowedError' || e.name === 'AbortError');
+          /* Safari (and some in-app browsers) refuse a prompt that did not
+             start from a tap - instantly. A person closing the prompt takes
+             longer than that. So a fast refusal of the automatic start turns
+             the whole screen into the button: one tap anywhere and it asks. */
+          if (fromAuto && refused && Date.now() - t0 < 1500 && tap) {
+            showTap(false);
+            return;
+          }
+          hideTap();
+          setNote(box, humanError(e, 'login'), refused ? '' : 'bad');
         });
       }
-      btn.addEventListener('click', go);
+      btn.addEventListener('click', function () { go(false); });
+
+      if (tap) {
+        tap.addEventListener('click', function () {
+          if (tap.classList.contains('waiting')) return;
+          showTap(true);
+          go(false);
+        });
+        tap.querySelector('[data-pk-tap-skip]').addEventListener('click', function (e) {
+          e.stopPropagation();
+          hideTap();
+          var u = document.querySelector('input[name="username"]');
+          if (u) u.focus();
+        });
+      }
 
       /* Start by itself only when the server says this browser holds a
          key. The guard is set *before* starting: if the prompt is closed
@@ -185,8 +224,28 @@
          this tab is closed - only the button stays. */
       if (box.dataset.pkAuto === '1' && store('session', 'pk_auto_done') !== '1') {
         store('session', 'pk_auto_done', '1');
-        go();
+        showTap(true);
+        go(true);
       }
+    });
+  }
+
+  /* ---------- approve one action (opening a door) ---------- */
+  function confirmAction(action) {
+    return post('/passkey/confirm/options', { action: action }).then(function (r) {
+      if (!r.ok) throw pkErr(r.error);
+      var o = r.options;
+      o.challenge = b64uToBuf(o.challenge);
+      (o.allowCredentials || []).forEach(function (c) { c.id = b64uToBuf(c.id); });
+      return navigator.credentials.get({ publicKey: o });
+    }).then(function (cred) {
+      if (!cred) throw pkErr('No answer from the device.');
+      return {
+        id: cred.id,
+        clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+        authenticatorData: bufToB64u(cred.response.authenticatorData),
+        signature: bufToB64u(cred.response.signature)
+      };
     });
   }
 
@@ -292,7 +351,11 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAll);
   else bindAll();
 
-  window.HomePasskey = { supported: function (rp) {
-    return hasApi() && onRightHost(rp) && window.isSecureContext ? hasPlatform() : Promise.resolve(false);
-  } };
+  window.HomePasskey = {
+    supported: function (rp) {
+      return hasApi() && onRightHost(rp) && window.isSecureContext ? hasPlatform() : Promise.resolve(false);
+    },
+    confirm: confirmAction,
+    message: function (e) { return humanError(e, 'confirm'); }
+  };
 })();

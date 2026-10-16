@@ -39,6 +39,15 @@ button:active { transform: scale(.98); }
 .pk-note--bad { color: var(--danger); }
 .or { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; color: var(--muted); font-size: .8rem; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.pk-tap { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 22px; padding: 24px; text-align: center; cursor: pointer; background: rgba(11,16,32,.92);
+          backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.pk-tap .ring { width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; font-size: 3.4rem; color: #fff;
+                background: radial-gradient(circle at 30% 30%, var(--accent-2), var(--accent)); box-shadow: 0 0 0 10px rgba(139,155,255,.15), 0 0 60px rgba(139,155,255,.45); }
+.pk-tap:not(.waiting) .ring { animation: pkpulse 1.6s ease-in-out infinite; }
+@keyframes pkpulse { 50% { box-shadow: 0 0 0 22px rgba(139,155,255,.05), 0 0 80px rgba(139,155,255,.6); } }
+.pk-tap b { font-size: 1.15rem; max-width: 280px; line-height: 1.4; }
+.pk-tap .skip { width: auto; padding: 10px 18px; background: none; box-shadow: none; color: var(--muted); font-weight: 600; font-size: .9rem; }
 .error { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 18px; border-radius: 12px;
          background: rgba(251,113,133,.12); border: 1px solid rgba(251,113,133,.35); color: var(--danger); font-size: .9rem; }
 </style>
@@ -71,6 +80,13 @@ button:active { transform: scale(.98); }
     <label class="remember"><input type="checkbox" name="remember"> Keep me signed in</label>
     <button type="submit">Sign in</button>
 </form>
+{% if pk_ready and pk_auto %}
+<div class="pk-tap" data-pk-tap role="button" aria-label="Sign in with fingerprint" hidden>
+    <span class="ring"><i class="fa-solid fa-fingerprint"></i></span>
+    <b data-pk-tap-text>Waiting for your fingerprint…</b>
+    <button type="button" class="skip" data-pk-tap-skip>Use password instead</button>
+</div>
+{% endif %}
 {% if pk_ready %}<script src="{{ url_for('static', filename='js/passkey.js') }}"></script>{% endif %}
 </body>
 </html>

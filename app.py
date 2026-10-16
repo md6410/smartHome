@@ -895,7 +895,8 @@ def index():
         'index.html', username=current_user.id,
         light_groups=light_groups, scenes=SCENES,
         cooler_max=COOLER_MAX_LEVEL, base_domain=BASE_DOMAIN,
-        pk_ready=passkeys.available, pk_rp_id=PASSKEY_RP_ID))
+        pk_ready=passkeys.available, pk_rp_id=PASSKEY_RP_ID,
+        door_pk=door_needs_fingerprint()))
     # Sessions opened before a key was registered get the device note too,
     # so the next login can start the fingerprint prompt by itself
     if passkeys.available and \
@@ -1101,19 +1102,66 @@ def pulse(pin, seconds):
     time.sleep(seconds)
     gpio_write(pin, GPIO.HIGH)
 
+DOOR_ACTIONS = ('door:main', 'door:parking')
+
+def on_passkey_host():
+    host = request.host.split(':')[0].lower()
+    return host == PASSKEY_RP_ID or host.endswith('.' + PASSKEY_RP_ID)
+
+def door_needs_fingerprint():
+    """Doors open only with a fingerprint once the account has one set up.
+
+    Except on an address where browsers cannot do fingerprints at all (the
+    LAN IP over plain http): there the page keeps its tap-twice button, so
+    the doors still work from home when the internet is down.
+    """
+    return passkeys.available and on_passkey_host() and passkeys.count(current_user.id) > 0
+
+@app.route("/passkey/confirm/options", methods=['POST'])
+@login_required
+def passkey_confirm_options():
+    action = str(pk_body().get('action', ''))
+    if action not in DOOR_ACTIONS:
+        return pk_reply(False, 400, error='Unknown action.')
+    if not passkeys.available:
+        return pk_reply(False, 404, error='Fingerprint login is not set up on this server.')
+    try:
+        handle, options = passkeys.confirm_options(current_user.id, action)
+    except PasskeyError as e:
+        return pk_reply(False, 400, error=str(e))
+    session['pk_confirm'] = handle
+    return pk_reply(options=options)
+
+def open_door(action, pin, seconds, name):
+    if door_needs_fingerprint():
+        who = client_ip()
+        wait = login_gate.locked_for(who)
+        if wait:
+            return pk_reply(False, 429, error=locked_message(wait))
+        assertion = pk_body().get('assertion')
+        if not isinstance(assertion, dict):
+            # The page asks for the fingerprint and sends it with the retry
+            return pk_reply(False, 428, needFingerprint=True, error='Confirm with your fingerprint.')
+        try:
+            passkeys.confirm_verify(current_user.id, session.pop('pk_confirm', None), assertion, action)
+        except PasskeyError as e:
+            login_gate.fail(who)
+            logger.warning(f"{name} not opened for {current_user.id}: {e}")
+            return pk_reply(False, 403, error=str(e))
+        login_gate.reset(who)
+    pulse(pin, seconds)
+    logger.info(f"{name} opened by {current_user.id}")
+    return jsonify({"status": "success", "ok": True, "door": action.split(':')[1]})
+
 @app.route("/ParkingDoorToggle", methods=['POST'])
 @login_required
 def toggleParkingDoor():
-    pulse(pinToType["Parking_Remote"], 1)
-    logger.debug(f"Parking door toggled by {current_user.id}")
-    return jsonify({"status": "success", "door": "parking"})
+    return open_door('door:parking', pinToType["Parking_Remote"], 1, "Parking door")
 
 @app.route("/MainDoorToggle", methods=['POST'])
 @login_required
 def toggleMainDoor():
-    pulse(pinToType["Main_Door"], 0.1)
-    logger.debug(f"Main door toggled by {current_user.id}")
-    return jsonify({"status": "success", "door": "main"})
+    return open_door('door:main', pinToType["Main_Door"], 0.1, "Main door")
 
 # =======================
 # CHILD SERVERS (upload, firmware)

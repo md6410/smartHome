@@ -159,6 +159,17 @@ Sign in to the control panel with a fingerprint, face or phone PIN
    for this device**, and confirm with your fingerprint.
 3. From then on the login page asks for the fingerprint by itself.
 
+**Doors.** Once an account has fingerprint login, the main and parking doors
+open only after a fingerprint, checked on the Pi: each approval names one
+door and is used once. On the LAN address, where browsers allow no
+fingerprints, the doors keep their tap-twice button so they still work from
+home when the internet is down.
+
+On iPhone, Safari only shows the fingerprint prompt after a tap. When it
+refuses the automatic start, the whole login screen becomes the button: one
+tap anywhere. Right after **Log out** the prompt does not start by itself,
+or logging out would sign you straight back in.
+
 It only works on the https address: browsers refuse passkeys on plain http
 and on the LAN IP, and the card says so there. The key stays in the phone's
 secure hardware; the Pi stores only public keys, in
