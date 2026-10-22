@@ -148,6 +148,30 @@ run `bash ~/smartHome/update.sh` once and it creates it.
 
 ---
 
+## Motorcycle button and settings
+
+**Motorcycle.** Opens the parking door only part way: the Pi presses the
+remote (the door starts opening), presses again after 14 s (the door stops),
+and presses a third time 12 s later (the door closes). The button shows a
+countdown meanwhile. Tapping it again during the trip does nothing. The
+**Parking** button cancels the trip at any point and presses the remote once,
+as it always does.
+
+**Settings** (gear icon at the top, or **More → Settings**) are saved on the
+Pi in `instance/settings.json` and survive restarts:
+
+- motorcycle timing: opening time and how long the door stays open
+- how long each press of the parking remote and the main door lasts
+- the second-tap window for doors without a fingerprint
+- water cooler defaults: fan speed, run time, pump, channel fan, repeat, rest
+- split AC temperature
+- whether the automatic light schedule turns on when the Pi starts
+
+New cooler defaults apply right away while the cooler is off; a running
+cycle keeps its own settings.
+
+---
+
 ## Fingerprint login
 
 Sign in to the control panel with a fingerprint, face or phone PIN
@@ -160,7 +184,7 @@ Sign in to the control panel with a fingerprint, face or phone PIN
 3. From then on the login page asks for the fingerprint by itself.
 
 **Doors.** Once an account has fingerprint login, the main and parking doors
-open only after a fingerprint, checked on the Pi: each approval names one
+(and the motorcycle button) open only after a fingerprint, checked on the Pi: each approval names one
 door and is used once. On the LAN address, where browsers allow no
 fingerprints, the doors keep their tap-twice button so they still work from
 home when the internet is down.

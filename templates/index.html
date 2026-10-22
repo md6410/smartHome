@@ -103,7 +103,7 @@ a { color: inherit; text-decoration: none; }
 .stat b { font-size: 0.95rem; font-weight: 600; }
 
 /* ---------- quick actions ---------- */
-.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 26px; }
+.quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 26px; }
 .quick-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); text-align: left; transition: transform .15s ease, background .2s, border-color .2s, box-shadow .2s; min-height: 112px; }
 .quick-tile:active { transform: scale(0.97); }
 .quick-tile .q-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); font-size: 1.05rem; transition: background .2s, color .2s; }
@@ -115,6 +115,9 @@ a { color: inherit; text-decoration: none; }
 .quick-tile.armed { border-color: var(--warm); background: rgba(255, 181, 71, 0.12); }
 .quick-tile.armed .q-sub { color: var(--warm); font-weight: 600; }
 .quick-tile.busy { opacity: .6; pointer-events: none; }
+.quick-tile.running { border-color: rgba(52,211,153,.45); background: rgba(52,211,153,.1); }
+.quick-tile.running .q-icon { background: var(--ok); color: #032b1e; box-shadow: 0 0 24px rgba(52,211,153,.35); }
+.quick-tile.running .q-sub { color: var(--ok); font-weight: 600; }
 .split-btns { display: flex; gap: 6px; margin-top: auto; width: 100%; }
 .mini-btn { flex: 1; padding: 7px 0; border-radius: 10px; font-size: 0.78rem; font-weight: 600; background: var(--surface-2); transition: background .2s; }
 .mini-btn:hover { background: var(--surface-3); }
@@ -219,7 +222,7 @@ a { color: inherit; text-decoration: none; }
 .split-note { margin-top: 14px; font-size: 0.78rem; color: var(--faint); }
 
 /* ---------- doors & servers ---------- */
-.doors { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
 .door { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); text-align: left; transition: all .2s; }
 .door .d-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 1.2rem; background: var(--surface-2); color: var(--accent); }
 .door b { display: block; }
@@ -229,6 +232,43 @@ a { color: inherit; text-decoration: none; }
 .door.armed .d-icon { background: var(--warm); color: #3b2500; }
 .door.armed small { color: var(--warm); font-weight: 600; }
 .door.busy { opacity: .6; pointer-events: none; }
+.door.running { border-color: rgba(52,211,153,.45); background: rgba(52,211,153,.1); }
+.door.running .d-icon { background: var(--ok); color: #032b1e; }
+.door.running small { color: var(--ok); font-weight: 600; }
+.server.link-row .go { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+
+/* ---------- settings sheet ---------- */
+.sheet { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; background: rgba(4, 7, 18, .6);
+         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.sheet.open { opacity: 1; pointer-events: auto; }
+.sheet-panel { width: min(560px, 100%); max-height: 90vh; display: flex; flex-direction: column; border-radius: 24px 24px 0 0; background: #121833; border: 1px solid var(--border);
+               box-shadow: 0 -20px 60px rgba(0,0,0,.5); transform: translateY(30px); transition: transform .3s ease; padding-bottom: env(safe-area-inset-bottom); }
+.sheet.open .sheet-panel { transform: none; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 18px 12px; border-bottom: 1px solid var(--border); }
+.sheet-head h2 { font-size: 1.15rem; display: flex; align-items: center; gap: 10px; }
+.sheet-head h2 i { color: var(--accent); }
+.sheet-body { overflow-y: auto; padding: 4px 18px 8px; -webkit-overflow-scrolling: touch; }
+.set-group { padding: 14px 0 4px; }
+.set-group h3 { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin-bottom: 6px; }
+.set-group h3 i { color: var(--accent); }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.set-group .set-row:last-child { border-bottom: none; }
+.set-row .lbl { min-width: 0; }
+.set-row .lbl b { display: block; font-size: 0.92rem; font-weight: 600; }
+.set-row .lbl small { display: block; font-size: 0.76rem; color: var(--faint); line-height: 1.4; margin-top: 2px; }
+.num { display: flex; align-items: center; flex-shrink: 0; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.num button { width: 36px; height: 40px; color: var(--muted); font-size: 0.85rem; }
+.num button:active { color: var(--text); }
+.num input { width: 52px; height: 40px; border: none; background: none; color: var(--text); font: inherit; font-weight: 700; text-align: center; -moz-appearance: textfield; }
+.num input::-webkit-outer-spin-button, .num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num .unit { font-size: 0.75rem; color: var(--faint); width: 26px; }
+.sheet-foot { display: flex; gap: 10px; padding: 12px 18px 16px; border-top: 1px solid var(--border); }
+.sheet-foot button { flex: 1; padding: 13px; border-radius: 14px; font-weight: 700; }
+.btn-ghost { background: var(--surface-2); color: var(--muted); }
+.btn-ghost.armed { background: rgba(251,113,133,.18); color: var(--danger); }
+.btn-main { color: #0b1020; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.btn-main:disabled { opacity: .6; }
+body.sheet-lock { overflow: hidden; }
 .server { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); margin-bottom: 10px; }
 .server .s-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
 .server .s-body { flex: 1; min-width: 0; }
@@ -284,7 +324,7 @@ a { color: inherit; text-decoration: none; }
 .nav a.active i { color: var(--accent); }
 
 /* ---------- toast ---------- */
-.toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom)); z-index: 60;
+.toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom)); z-index: 80;
          transform: translate(-50%, 20px); opacity: 0; pointer-events: none; transition: all .3s ease;
          padding: 12px 18px; border-radius: 14px; font-size: 0.88rem; font-weight: 600; max-width: calc(100% - 32px);
          background: rgba(30, 37, 66, 0.95); border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,.4); display: flex; align-items: center; gap: 10px; }
@@ -292,12 +332,17 @@ a { color: inherit; text-decoration: none; }
 .toast.err i { color: var(--danger); }
 .toast i { color: var(--ok); }
 
+@media (min-width: 721px) {
+    .sheet { align-items: center; }
+    .sheet-panel { border-radius: 24px; max-height: 86vh; }
+}
 @media (max-width: 900px) {
     .hero { grid-template-columns: 1fr; }
     .climate { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
     .quick { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .quick .lights-tile { grid-column: 1 / -1; }
     .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
     .scenes::-webkit-scrollbar { display: none; }
     .scene { flex: 0 0 96px; scroll-snap-align: start; }
@@ -347,6 +392,7 @@ a { color: inherit; text-decoration: none; }
             </div>
             <div class="top-actions">
                 <span class="conn" id="conn"><i></i><span>Online</span></span>
+                <button class="icon-btn" data-settings-open title="Settings" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
                 <a class="icon-btn" href="/logout" title="Log out" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i></a>
             </div>
         </div>
@@ -420,6 +466,13 @@ a { color: inherit; text-decoration: none; }
                 <span class="q-icon"><i class="fa-solid fa-car"></i></span>
                 <div>
                     <div class="q-title">Parking</div>
+                    <div class="q-sub">Tap to open</div>
+                </div>
+            </button>
+            <button class="quick-tile door-quick" data-door="moto">
+                <span class="q-icon"><i class="fa-solid fa-motorcycle"></i></span>
+                <div>
+                    <div class="q-title">Motorcycle</div>
                     <div class="q-sub">Tap to open</div>
                 </div>
             </button>
@@ -584,6 +637,19 @@ a { color: inherit; text-decoration: none; }
                 <span class="d-icon"><i class="fa-solid fa-car"></i></span>
                 <span><b>Parking Door</b><small>Tap to open</small></span>
             </button>
+            <button class="door" data-door="moto">
+                <span class="d-icon"><i class="fa-solid fa-motorcycle"></i></span>
+                <span><b>Motorcycle</b><small>Tap to open</small></span>
+            </button>
+        </div>
+
+        <div class="server link-row">
+            <span class="s-icon"><i class="fa-solid fa-gear"></i></span>
+            <div class="s-body">
+                <b>Settings</b>
+                <small>Motorcycle timing, doors, cooler defaults</small>
+            </div>
+            <button class="go" data-settings-open aria-label="Open settings"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
 
         {% if pk_ready %}
@@ -640,6 +706,46 @@ a { color: inherit; text-decoration: none; }
     <a href="#climate"><i class="fa-solid fa-fan"></i>Climate</a>
     <a href="#more"><i class="fa-solid fa-door-open"></i>More</a>
 </nav>
+
+<div class="sheet" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings_title" aria-hidden="true">
+    <div class="sheet-panel">
+        <div class="sheet-head">
+            <h2 id="settings_title"><i class="fa-solid fa-gear"></i>Settings</h2>
+            <button class="icon-btn" data-settings-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form class="sheet-body" id="settings_form" novalidate>
+            {% for title, icon, fields in settings_sections %}
+            <div class="set-group">
+                <h3><i class="fa-solid {{ icon }}"></i>{{ title }}</h3>
+                {% for f in fields %}
+                <div class="set-row">
+                    <div class="lbl">
+                        <b>{{ f.label }}</b>
+                        {% if f.hint %}<small>{{ f.hint }}</small>{% endif %}
+                    </div>
+                    {% if f.type == 'bool' %}
+                    <button type="button" class="switch" role="switch" data-key="{{ f.key }}" aria-label="{{ f.label }}"
+                            aria-checked="{{ 'true' if house[f.key] else 'false' }}"></button>
+                    {% else %}
+                    <div class="num">
+                        <button type="button" data-step="-1" aria-label="Less"><i class="fa-solid fa-minus"></i></button>
+                        <input type="number" inputmode="decimal" data-key="{{ f.key }}" aria-label="{{ f.label }}"
+                               min="{{ f.min }}" max="{{ f.max }}" step="{{ f.step }}" value="{{ house[f.key] }}">
+                        <span class="unit">{{ f.unit }}</span>
+                        <button type="button" data-step="1" aria-label="More"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </form>
+        <div class="sheet-foot">
+            <button type="button" class="btn-ghost" id="settings_reset">Reset to defaults</button>
+            <button type="button" class="btn-main" id="settings_save">Save</button>
+        </div>
+    </div>
+</div>
 
 <div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span></span></div>
 
@@ -982,24 +1088,55 @@ a { color: inherit; text-decoration: none; }
     // With fingerprint login on, a door opens only after the fingerprint -
     // the server refuses it otherwise. Without it (or on the LAN address,
     // where browsers allow no fingerprints) the first tap arms the button
-    // and a second tap within 3 s opens: no opening by brushing the screen.
+    // and a second tap within a few seconds opens: no opening by brushing
+    // the screen.
     var doorPk = {{ 'true' if door_pk else 'false' }} && !!window.HomePasskey;
+    var confirmMs = {{ house.doorConfirmSeconds|int }} * 1000;
+    var DOORS = {
+        main:    { action: 'door:main',    url: '/MainDoorToggle',    done: 'Main door opened' },
+        parking: { action: 'door:parking', url: '/ParkingDoorToggle', done: 'Parking door toggled' },
+        moto:    { action: 'door:moto',    url: '/ParkingMotoToggle', done: 'Motorcycle: door opening' }
+    };
     var doorButtons = [];
-    function doorLabels() {
-        doorButtons.forEach(function (d) {
-            d.idle = doorPk ? 'Tap, then fingerprint' : 'Tap to open';
-            if (!d.b.classList.contains('busy') && !d.b.classList.contains('armed')) d.sub.textContent = d.idle;
-        });
+
+    // The motorcycle trip runs on the Pi; the page only shows where it is
+    var moto = { running: false, step: null, deadline: null };
+    function acceptParking(p) {
+        if (!p) return;
+        moto.running = !!p.motoRunning;
+        moto.step = p.motoStep;
+        moto.deadline = p.secondsLeft != null ? Date.now() + p.secondsLeft * 1000 : null;
+        renderMoto();
     }
+    function motoText() {
+        var left = moto.deadline ? Math.max(0, Math.ceil((moto.deadline - Date.now()) / 1000)) : null;
+        var t = left != null ? ' · ' + left + 's' : '';
+        if (moto.step === 'opening') return 'Opening' + t;
+        if (moto.step === 'holding') return 'Open, closes in' + (left != null ? ' ' + left + 's' : '…');
+        if (moto.step === 'closing') return 'Closing…';
+        return 'Working…';
+    }
+    function idleText() {
+        return doorPk ? 'Tap, then fingerprint' : 'Tap to open';
+    }
+    function renderDoor(d) {
+        var b = d.b;
+        if (d.kind === 'moto') b.classList.toggle('running', moto.running);
+        if (b.classList.contains('busy') || b.classList.contains('armed')) return;
+        d.sub.textContent = d.kind === 'moto' && moto.running ? motoText() : idleText();
+    }
+    function renderMoto() {
+        doorButtons.forEach(function (d) { if (d.kind === 'moto') renderDoor(d); });
+    }
+    function doorLabels() { doorButtons.forEach(renderDoor); }
+
     $$('[data-door]').forEach(function (b) {
-        var d = { b: b, sub: $('small', b) || $('.q-sub', b), idle: '' }, timer;
+        var d = { b: b, kind: b.dataset.door, sub: $('small', b) || $('.q-sub', b) }, timer;
+        var cfg = DOORS[d.kind];
         doorButtons.push(d);
-        var main = b.dataset.door === 'main';
-        var action = main ? 'door:main' : 'door:parking';
-        var url = main ? '/MainDoorToggle' : '/ParkingDoorToggle';
 
         function send(assertion) {
-            return fetch(url, {
+            return fetch(cfg.url, {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(assertion ? { assertion: assertion } : {})
@@ -1009,11 +1146,13 @@ a { color: inherit; text-decoration: none; }
             });
         }
         function done(r) {
+            if (r.parking) acceptParking(r.parking);
             if (r.ok || r.status === 'success') {
                 if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
-                toast(main ? 'Main door opened' : 'Parking door toggled');
+                toast(r.cancelledMoto ? 'Motorcycle trip cancelled · parking door toggled' : cfg.done);
                 return;
             }
+            if (r.busy) { toast('Motorcycle trip still running - wait for it to finish', true); return; }
             if (r.needFingerprint && window.HomePasskey) {
                 // Fingerprint was turned on in another tab or on another phone
                 doorPk = true; doorLabels();
@@ -1022,14 +1161,19 @@ a { color: inherit; text-decoration: none; }
             }
             toast(r.error || 'Could not reach the door', true);
         }
-        function finish() { b.classList.remove('busy'); d.sub.textContent = d.idle; }
+        function finish() { b.classList.remove('busy'); renderDoor(d); }
 
         b.addEventListener('click', function () {
             vibrate();
+            // A tap during the motorcycle trip does nothing: no fingerprint, no press
+            if (d.kind === 'moto' && moto.running) {
+                toast('Motorcycle trip in progress · ' + motoText());
+                return;
+            }
             if (doorPk) {
                 b.classList.add('busy');
                 d.sub.textContent = 'Confirm with fingerprint…';
-                HomePasskey.confirm(action).then(function (a) {
+                HomePasskey.confirm(cfg.action).then(function (a) {
                     d.sub.textContent = 'Opening…';
                     return send(a);
                 }).then(done).catch(function (e) {
@@ -1040,7 +1184,7 @@ a { color: inherit; text-decoration: none; }
             if (!b.classList.contains('armed')) {
                 b.classList.add('armed');
                 d.sub.textContent = 'Tap again to open';
-                timer = setTimeout(function () { b.classList.remove('armed'); d.sub.textContent = d.idle; }, 3000);
+                timer = setTimeout(function () { b.classList.remove('armed'); renderDoor(d); }, confirmMs);
                 return;
             }
             clearTimeout(timer);
@@ -1058,6 +1202,94 @@ a { color: inherit; text-decoration: none; }
             HomePasskey.supported(pkManage.dataset.pkRp).then(function (ok) { doorPk = ok; doorLabels(); });
         });
     }
+
+    // ---------------------------------------------------------------- settings
+    var sheet = $('#settings'), form = $('#settings_form'), lastFocus = null;
+    function openSettings() {
+        lastFocus = document.activeElement;
+        get('/house_settings').then(function (d) { fillSettings(d.settings); }).catch(function () {});
+        sheet.classList.add('open');
+        sheet.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('sheet-lock');
+        $('[data-settings-close]', sheet).focus();
+    }
+    function closeSettings() {
+        if (!sheet.classList.contains('open')) return;
+        sheet.classList.remove('open');
+        sheet.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sheet-lock');
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    function fillSettings(v) {
+        $$('[data-key]', form).forEach(function (el) {
+            var val = v[el.dataset.key];
+            if (val === undefined) return;
+            if (el.classList.contains('switch')) el.setAttribute('aria-checked', !!val);
+            else el.value = val;
+        });
+        if (v.doorConfirmSeconds) confirmMs = v.doorConfirmSeconds * 1000;
+    }
+    function readSettings() {
+        var out = {};
+        $$('[data-key]', form).forEach(function (el) {
+            out[el.dataset.key] = el.classList.contains('switch')
+                ? el.getAttribute('aria-checked') === 'true' : el.value;
+        });
+        return out;
+    }
+    $$('.switch[data-key]', form).forEach(function (sw) {
+        sw.addEventListener('click', function () {
+            vibrate();
+            sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true');
+        });
+    });
+    $$('.num', form).forEach(function (box) {
+        var input = $('input', box);
+        var step = +input.step || 1, places = (String(input.step).split('.')[1] || '').length;
+        function clamp(v) { return Math.min(+input.max, Math.max(+input.min, v)); }
+        $$('[data-step]', box).forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                vibrate();
+                var v = clamp((parseFloat(input.value) || 0) + step * +btn.dataset.step);
+                input.value = +(Math.round(v / step) * step).toFixed(places);
+            });
+        });
+        input.addEventListener('change', function () {
+            var v = parseFloat(input.value);
+            if (!isNaN(v)) input.value = clamp(v);
+        });
+    });
+    function saveSettings(body, msg) {
+        var btn = $('#settings_save');
+        btn.disabled = true;
+        return post('/house_settings', body, true).then(function (d) {
+            fillSettings(d.settings);
+            loadStatus();
+            toast(msg);
+        }).catch(function () { toast('Could not save the settings', true); })
+          .then(function () { btn.disabled = false; });
+    }
+    $('#settings_save').addEventListener('click', function () {
+        saveSettings({ settings: readSettings() }, 'Settings saved').then(closeSettings);
+    });
+    form.addEventListener('submit', function (e) { e.preventDefault(); $('#settings_save').click(); });
+    var resetBtn = $('#settings_reset'), resetTimer;
+    resetBtn.addEventListener('click', function () {
+        if (!resetBtn.classList.contains('armed')) {
+            resetBtn.classList.add('armed');
+            resetBtn.textContent = 'Tap again to reset';
+            resetTimer = setTimeout(function () { resetBtn.classList.remove('armed'); resetBtn.textContent = 'Reset to defaults'; }, 3000);
+            return;
+        }
+        clearTimeout(resetTimer);
+        resetBtn.classList.remove('armed');
+        resetBtn.textContent = 'Reset to defaults';
+        saveSettings({ reset: true }, 'Settings back to defaults');
+    });
+    $$('[data-settings-open]').forEach(function (b) { b.addEventListener('click', openSettings); });
+    $('[data-settings-close]', sheet).addEventListener('click', closeSettings);
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) closeSettings(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSettings(); });
 
     // ---------------------------------------------------------------- servers
     function serverControl(id, statusUrl, toggleUrl, name, port) {
@@ -1095,6 +1327,7 @@ a { color: inherit; text-decoration: none; }
             autoOn = !!d.autoLightMode;
             if (d.cooler && !coolerBusy) acceptCooler(d.cooler);
             if (d.acSplitState) { split.running = !!d.acSplitState.running; renderSplit(); }
+            acceptParking(d.parking);
             renderLights(); renderScenes();
         }).catch(function () {});
     }
@@ -1119,7 +1352,7 @@ a { color: inherit; text-decoration: none; }
         timers.push(setInterval(loadStatus, 3000));
         timers.push(setInterval(loadDateWeather, 60000));
         timers.push(setInterval(function () { loadUpload(); loadFirmware(); }, 10000));
-        timers.push(setInterval(function () { tickClock(); renderCoolerPhase(); }, 1000));
+        timers.push(setInterval(function () { tickClock(); renderCoolerPhase(); if (moto.running) renderMoto(); }, 1000));
     }
     function stopLoops() { timers.forEach(clearInterval); timers = []; }
     // Phones throttle background tabs anyway; stop polling and refresh on return

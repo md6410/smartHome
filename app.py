@@ -7,6 +7,8 @@ import threading
 import requests
 import os
 import time
+import json
+import math
 import serial
 import cv2
 import jdatetime
@@ -496,6 +498,123 @@ def send_cooler_fan_level(fanLevel):
         return False, f"Unexpected error: {e}"
 
 
+# =======================
+# HOUSE SETTINGS (instance/settings.json)
+# =======================
+def setting(key, label, kind, default, lo=None, hi=None, step=1, unit='', hint=''):
+    return {'key': key, 'label': label, 'kind': kind, 'type': kind.__name__, 'default': default,
+            'min': lo, 'max': hi, 'step': step, 'unit': unit, 'hint': hint}
+
+# Shown in this order on the settings panel: (section, icon, fields)
+HOUSE_SETTINGS = [
+    ("Motorcycle", "fa-motorcycle", [
+        setting('motoOpenSeconds', 'Opening time', float, 14, 2, 120, 0.5, 's',
+                'After the first press, wait this long, then press again to stop the door'),
+        setting('motoHoldSeconds', 'Stay open', float, 12, 2, 300, 0.5, 's',
+                'How long the door waits half open before it closes'),
+    ]),
+    ("Doors", "fa-door-open", [
+        setting('parkingPressSeconds', 'Parking remote press', float, 1, 0.1, 3, 0.1, 's',
+                'How long each press of the parking remote lasts'),
+        setting('mainDoorPressSeconds', 'Main door press', float, 0.1, 0.05, 3, 0.05, 's',
+                'How long the main door lock is released'),
+        setting('doorConfirmSeconds', 'Second tap window', int, 3, 1, 10, 1, 's',
+                'Without a fingerprint, the second tap must come within this time'),
+    ]),
+    ("Water cooler defaults", "fa-fan", [
+        setting('coolerFanLevel', 'Fan speed', int, 3, 1, COOLER_MAX_LEVEL, 1, ''),
+        setting('coolerLength', 'Run for', int, 30, 1, 24 * 60, 5, 'min'),
+        setting('coolerWaterPump', 'Water pump', bool, False),
+        setting('coolerFanBetween', 'Channel fan', bool, False),
+        setting('coolerRepeat', 'Repeat', bool, False, hint='Rest, then run again'),
+        setting('coolerInterval', 'Rest between runs', int, 30, 1, 24 * 60, 5, 'min'),
+    ]),
+    ("Split AC", "fa-snowflake", [
+        setting('splitTemperature', 'Temperature', int, 23, 16, 30, 1, '°C'),
+    ]),
+    ("Lights", "fa-lightbulb", [
+        setting('autoLightOnBoot', 'Automatic schedule after a restart', bool, False,
+                hint='Turn the scene schedule on by itself when the Pi starts'),
+    ]),
+]
+
+class HouseSettings:
+    """Settings changed from the panel, kept across restarts in one JSON file."""
+
+    def __init__(self, path, sections):
+        self._path = path
+        self._lock = threading.Lock()
+        self.fields = {f['key']: f for _, _, fields in sections for f in fields}
+        self.defaults = {k: f['default'] for k, f in self.fields.items()}
+        self._values = dict(self.defaults)
+        try:
+            with open(path) as fh:
+                self._values.update(self.clean(json.load(fh)))
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError) as e:
+            logger.error(f"Could not read {path}, using defaults: {e}")
+
+    def clean(self, src):
+        """Keep known keys only, each turned into its type and kept in range."""
+        out = {}
+        if not isinstance(src, dict):
+            return out
+        for key, f in self.fields.items():
+            if key not in src:
+                continue
+            value = src[key]
+            if f['kind'] is bool:
+                out[key] = value if isinstance(value, bool) else parse_bool(value)
+                continue
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(value):
+                continue
+            value = max(f['min'], min(f['max'], value))
+            out[key] = int(round(value)) if f['kind'] is int else round(value, 2)
+        return out
+
+    def get(self, key):
+        return self._values[key]
+
+    def all(self):
+        return dict(self._values)
+
+    def update(self, src):
+        changes = self.clean(src)
+        with self._lock:
+            self._values.update(changes)
+            self._save()
+        return changes
+
+    def reset(self):
+        with self._lock:
+            self._values = dict(self.defaults)
+            self._save()
+        return self.all()
+
+    def _save(self):
+        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        tmp = self._path + '.tmp'
+        with open(tmp, 'w') as fh:
+            json.dump(self._values, fh, indent=2)
+        os.replace(tmp, self._path)   # never leaves a half-written file
+
+
+house = HouseSettings(os.path.join(base_dir, 'instance', 'settings.json'), HOUSE_SETTINGS)
+ac_split_state['temperature'] = house.get('splitTemperature')
+
+def cooler_defaults():
+    return {
+        'fanLevel': house.get('coolerFanLevel'), 'waterPump': house.get('coolerWaterPump'),
+        'fanBetween': house.get('coolerFanBetween'), 'length': house.get('coolerLength'),
+        'repeat': house.get('coolerRepeat'), 'interval': house.get('coolerInterval'),
+    }
+
+
 COOLER_TICK = 30   # seconds between command re-sends while cooling
 
 class CoolerController:
@@ -511,10 +630,7 @@ class CoolerController:
         self._thread = None
         self._stop = threading.Event()
         self._wake = threading.Event()
-        self.settings = {
-            'fanLevel': 3, 'waterPump': False, 'fanBetween': False,
-            'length': 30, 'repeat': False, 'interval': 30,
-        }
+        self.settings = cooler_defaults()
         self.phase = 'off'           # off | cooling | resting
         self.phase_ends = None
         self.outputs = {'power': False, 'pump': False, 'fanBetween': False}
@@ -545,6 +661,13 @@ class CoolerController:
         if 'fanLevel' in changes:
             changes['fanLevel'] = max(0, min(COOLER_MAX_LEVEL, int(changes['fanLevel'])))
         return changes
+
+    def use_defaults(self, defaults):
+        """New defaults from the settings panel. A running cycle keeps its own."""
+        with self._lock:
+            if not self.running:
+                self.settings.update(self._bounded(dict(defaults)))
+        return self.status()
 
     def configure(self, **changes):
         changes = self._bounded(changes)
@@ -908,7 +1031,8 @@ def index():
         light_groups=light_groups, scenes=SCENES,
         cooler_max=COOLER_MAX_LEVEL, base_domain=BASE_DOMAIN,
         pk_ready=passkeys.available, pk_rp_id=PASSKEY_RP_ID,
-        door_pk=door_needs_fingerprint()))
+        door_pk=door_needs_fingerprint(),
+        settings_sections=HOUSE_SETTINGS, house=house.all()))
     # Sessions opened before a key was registered get the device note too,
     # so the next login can start the fingerprint prompt by itself
     if passkeys.available and \
@@ -986,6 +1110,7 @@ def get_all_status():
             'fanBetween': c['settings']['fanBetween'],
         },
         'fanBetweenChannels': c['outputs']['fanBetween'],
+        'parking': parking.status(),
     })
 
 # =======================
@@ -1155,7 +1280,100 @@ def pulse(pin, seconds):
     time.sleep(seconds)
     gpio_write(pin, GPIO.HIGH)
 
-DOOR_ACTIONS = ('door:main', 'door:parking')
+class ParkingDoor:
+    """The parking remote, and the motorcycle trip that uses it.
+
+    The remote has one button: each press starts, stops or reverses the
+    door. A motorcycle needs only part of the opening, so its trip is
+    press (opening), wait, press (door stops part way), wait, press
+    (closing). Tapping the motorcycle button again meanwhile does
+    nothing. The car button cancels the trip and presses once, as it
+    always did.
+    """
+    GAP = 0.5   # rest between two presses, so they never merge into one long one
+
+    def __init__(self, pin):
+        self.pin = pin
+        self._press_lock = threading.Lock()
+        self._lock = threading.Lock()
+        self._thread = None
+        self._cancel = threading.Event()
+        self._last_release = 0.0
+        self.step = None          # opening | holding | closing
+        self.step_ends = None
+
+    def press(self):
+        with self._press_lock:
+            wait = self._last_release + self.GAP - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            try:
+                pulse(self.pin, house.get('parkingPressSeconds'))
+            finally:
+                self._last_release = time.monotonic()
+
+    @property
+    def moto_running(self):
+        t = self._thread
+        return t is not None and t.is_alive()
+
+    def status(self):
+        running = self.moto_running
+        ends = self.step_ends
+        return {
+            'motoRunning': running,
+            'motoStep': self.step if running else None,
+            'secondsLeft': max(0, round(ends - time.time(), 1)) if running and ends else None,
+        }
+
+    def moto(self, who):
+        """Start the motorcycle trip. False if one is already running."""
+        with self._lock:
+            if self.moto_running:
+                return False
+            self._cancel = threading.Event()
+            self.step, self.step_ends = 'opening', None
+            self._thread = threading.Thread(target=self._moto_run, args=(self._cancel, who),
+                                            name='parking-moto', daemon=True)
+            self._thread.start()
+        return True
+
+    def car(self):
+        """One press of the remote. Returns True if it cancelled a motorcycle trip."""
+        with self._lock:
+            worker = self._thread if self.moto_running else None
+            self._cancel.set()
+            if worker is not None:
+                worker.join(timeout=10)   # a press in progress finishes first
+            self.press()
+        return worker is not None
+
+    def _moto_run(self, cancel, who):
+        plan = (('opening', 'motoOpenSeconds'), ('holding', 'motoHoldSeconds'), ('closing', None))
+        logger.info(f"Motorcycle trip started by {who}")
+        try:
+            for step, wait_key in plan:
+                if cancel.is_set():
+                    break
+                # the wait counts from the start of the press, as set in the panel
+                ends = time.time() + house.get(wait_key) if wait_key else None
+                self.step, self.step_ends = step, ends
+                self.press()
+                if ends and cancel.wait(max(0, ends - time.time())):
+                    break
+            if cancel.is_set():
+                logger.info("Motorcycle trip cancelled by the car button")
+            else:
+                logger.info("Motorcycle trip finished")
+        except Exception:
+            logger.exception('Motorcycle trip crashed')
+        finally:
+            self.step, self.step_ends = None, None
+
+
+parking = ParkingDoor(pinToType["Parking_Remote"])
+
+DOOR_ACTIONS = ('door:main', 'door:parking', 'door:moto')
 
 def on_passkey_host():
     host = request.host.split(':')[0].lower()
@@ -1185,36 +1403,86 @@ def passkey_confirm_options():
     session['pk_confirm'] = handle
     return pk_reply(options=options)
 
-def open_door(action, pin, seconds, name):
-    if door_needs_fingerprint():
-        who = client_ip()
-        wait = login_gate.locked_for(who)
-        if wait:
-            return pk_reply(False, 429, error=locked_message(wait))
-        assertion = pk_body().get('assertion')
-        if not isinstance(assertion, dict):
-            # The page asks for the fingerprint and sends it with the retry
-            return pk_reply(False, 428, needFingerprint=True, error='Confirm with your fingerprint.')
-        try:
-            passkeys.confirm_verify(current_user.id, session.pop('pk_confirm', None), assertion, action)
-        except PasskeyError as e:
-            login_gate.fail(who)
-            logger.warning(f"{name} not opened for {current_user.id}: {e}")
-            return pk_reply(False, 403, error=str(e))
-        login_gate.reset(who)
-    pulse(pin, seconds)
-    logger.info(f"{name} opened by {current_user.id}")
-    return jsonify({"status": "success", "ok": True, "door": action.split(':')[1]})
+def door_refused(action, name):
+    """None when the door may move, otherwise the reply that refuses it."""
+    if not door_needs_fingerprint():
+        return None
+    who = client_ip()
+    wait = login_gate.locked_for(who)
+    if wait:
+        return pk_reply(False, 429, error=locked_message(wait))
+    assertion = pk_body().get('assertion')
+    if not isinstance(assertion, dict):
+        # The page asks for the fingerprint and sends it with the retry
+        return pk_reply(False, 428, needFingerprint=True, error='Confirm with your fingerprint.')
+    try:
+        passkeys.confirm_verify(current_user.id, session.pop('pk_confirm', None), assertion, action)
+    except PasskeyError as e:
+        login_gate.fail(who)
+        logger.warning(f"{name} not opened for {current_user.id}: {e}")
+        return pk_reply(False, 403, error=str(e))
+    login_gate.reset(who)
+    return None
+
+def moto_busy_reply():
+    return pk_reply(False, 409, busy=True, parking=parking.status(),
+                    error='The motorcycle trip is still running.')
 
 @app.route("/ParkingDoorToggle", methods=['POST'])
 @login_required
 def toggleParkingDoor():
-    return open_door('door:parking', pinToType["Parking_Remote"], 1, "Parking door")
+    refused = door_refused('door:parking', "Parking door")
+    if refused:
+        return refused
+    cancelled = parking.car()
+    logger.info(f"Parking door pressed by {current_user.id}" + (" (motorcycle trip cancelled)" if cancelled else ""))
+    return jsonify({"status": "success", "ok": True, "door": "parking",
+                    "cancelledMoto": cancelled, "parking": parking.status()})
+
+@app.route("/ParkingMotoToggle", methods=['POST'])
+@login_required
+def toggleParkingMoto():
+    # Checked before the fingerprint too: a tap during the trip does nothing
+    if parking.moto_running:
+        return moto_busy_reply()
+    refused = door_refused('door:moto', "Parking door (motorcycle)")
+    if refused:
+        return refused
+    if not parking.moto(current_user.id):
+        return moto_busy_reply()
+    return jsonify({"status": "success", "ok": True, "door": "moto", "parking": parking.status()})
 
 @app.route("/MainDoorToggle", methods=['POST'])
 @login_required
 def toggleMainDoor():
-    return open_door('door:main', pinToType["Main_Door"], 0.1, "Main door")
+    refused = door_refused('door:main', "Main door")
+    if refused:
+        return refused
+    pulse(pinToType["Main_Door"], house.get('mainDoorPressSeconds'))
+    logger.info(f"Main door opened by {current_user.id}")
+    return jsonify({"status": "success", "ok": True, "door": "main"})
+
+# =======================
+# SETTINGS PANEL
+# =======================
+def apply_house_settings():
+    cooler.use_defaults(cooler_defaults())
+    if not ac_split_state['running']:
+        ac_split_state['temperature'] = house.get('splitTemperature')
+
+@app.route("/house_settings", methods=['GET', 'POST'])
+@login_required
+def house_settings():
+    if request.method == 'POST':
+        body = request.get_json(silent=True) or {}
+        if body.get('reset'):
+            house.reset()
+            logger.info(f"Settings reset to defaults by {current_user.id}")
+        else:
+            changes = house.update(body.get('settings'))
+            logger.info(f"Settings changed by {current_user.id}: {changes}")
+        apply_house_settings()
+    return jsonify({"status": "success", "settings": house.all(), "defaults": house.defaults})
 
 # =======================
 # CHILD SERVERS (upload, firmware)
@@ -1533,6 +1801,10 @@ if __name__ == "__main__":
     gpio_write(pinToType["CoolerPower"], GPIO.HIGH)
     gpio_write(pinToType["Cooler_Pump"], GPIO.HIGH)
     gpio_write(pinToType["Fan_Between_Channels_Switch"], GPIO.LOW)
+
+    if house.get('autoLightOnBoot'):
+        logger.info("Automatic light schedule on, as set in the settings")
+        auto_light.start()
 
     logger.info("Starting Flask server on port 5000")
     app.run(host='0.0.0.0', debug=False, port=5000, threaded=True)
